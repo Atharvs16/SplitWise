@@ -15,23 +15,35 @@ async function register({ name, phone, password, ip, userAgent }) {
             phone,
             Password_hash,
         );
+
+        const session = await sessionQueries.createSession(
+            user.id,
+            null,
+            ip,
+            userAgent
+        );
         
-        const refreshToken = jwt.sign({
-            phone: user.phone,
-        }, config.JWT_SECRET, { expiresIn: '7d' }
+        const refreshToken = jwt.sign(
+            {
+                userId: user.id,
+                sessionId: session.id
+            },
+            config.JWT_SECRET,
+            {
+                expiresIn: "7d"
+            }
         );
     
         const refreshTokenHash = await bcrypt.hash(refreshToken, 10);
-        const session = await sessionQueries.createSession(
-            user.id,
-            refreshTokenHash,
-            ip,
-            userAgent
+
+        await sessionQueries.updateSessionRefreshToken(
+            session.id,
+            refreshTokenHash
         );
     
         const accessToken = jwt.sign(
             {
-                phone: user.phone,
+                userId: user.id,
                 sessionId: session.id
             }, config.JWT_SECRET, { expiresIn: '15m' }
         );
@@ -60,11 +72,69 @@ async function register({ name, phone, password, ip, userAgent }) {
 async function getme(token) {
     try{
         const decoded = jwt.verify(token, config.JWT_SECRET);
-        const user = await userQueries.getUserByPhone(decoded.phone);
+
+        if (!decoded) {
+            throw new Error("Invalid token");
+        }
+        
+        const user = await userQueries.getUserById(decoded.userId);
         if (!user) {
             throw new Error("User not found");
         }
         return user;
+    }
+    catch (error) {
+        if (error.name === 'TokenExpiredError') {
+            throw new Error("Token expired");
+        }
+        console.error(error);
+        throw error;
+    }
+}
+
+async function refreshToken(refreshToken) {
+    try{
+        const decoded = jwt.verify(refreshToken, config.JWT_SECRET);
+        if (!decoded) {
+            throw new Error("Invalid refresh token");
+        }
+
+        console.log("Decoded refresh token:", decoded);
+        
+
+        const sessionResult = await sessionQueries.getSessionById(decoded.sessionId, decoded.userId);
+        if (sessionResult === undefined || sessionResult === null) {
+            throw new Error("Session not found");
+        }
+
+        const session = sessionResult;
+        if(session.revoked) {
+            throw new Error("Session is revoked");
+        }
+
+        const isValidRefreshToken = await bcrypt.compare(refreshToken, session.refresh_token_hash);
+        if (!isValidRefreshToken) {
+            throw new Error("Invalid refresh token");
+        }
+
+        const newRefreshToken = jwt.sign({
+            userId: decoded.userId,
+            sessionId: session.id
+        }, config.JWT_SECRET, { expiresIn: '7d' });
+        const newRefreshTokenHash = await bcrypt.hash(newRefreshToken, 10);
+
+        await sessionQueries.updateSessionRefreshToken(session.id, newRefreshTokenHash);
+
+        const newAccessToken = jwt.sign({
+            userId: decoded.userId,
+            sessionId: session.id
+        }, config.JWT_SECRET, { expiresIn: '15m' });
+
+        return {
+            userId: decoded.userId,
+            accessToken: newAccessToken,
+            refreshToken: newRefreshToken
+        };
     }
     catch (error) {
         console.error(error);
@@ -74,5 +144,6 @@ async function getme(token) {
 
 module.exports = {
     register,
-    getme
+    getme,
+    refreshToken
 };

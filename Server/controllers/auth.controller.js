@@ -1,3 +1,4 @@
+const e = require("express");
 const authService = require("../services/auth.service");
 
 async function register(req, res) {
@@ -51,7 +52,49 @@ async function getme(req, res) {
     }
 }
 
+async function refreshToken(req, res) {
+    const refreshToken = req.cookies.refreshtoken;
+    if (!refreshToken) {
+        return res.status(401).json({ error: "No refresh token provided" });
+    }
+
+    try{
+        const result = await authService.refreshToken(refreshToken);
+
+        res.cookie('refreshtoken', result.refreshToken, {
+            httpOnly: true,
+            secure: true,
+            sameSite: 'strict',
+            maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+        });
+
+        res.status(200).json({
+            userId: result.userId,
+            accessToken: result.accessToken
+        });
+    }
+    catch (error) {
+        console.error(error);
+        if (error.name === "TokenExpiredError") {
+            return res.status(401).json({
+                error: "Refresh token expired"
+            });
+        }
+
+        if (error.name === "JsonWebTokenError") {
+            return res.status(401).json({
+                error: "Invalid refresh token"
+            });
+        }
+
+        return res.status(500).json({
+            error: error.message || "Database error"
+        });
+    }
+}
+
 module.exports = {
     register,
-    getme
+    getme,
+    refreshToken
 };

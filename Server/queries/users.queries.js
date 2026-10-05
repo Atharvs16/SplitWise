@@ -12,14 +12,14 @@ async function createUser(name, phone, password_hash) {
     return result.rows[0];
 };
 
-async function getUserByPhone(phone) {
+async function getUserById(userId) {
     const result = await db.query(`
-        SELECT name, phone FROM users WHERE phone = $1;
-    `,[phone]);
+        SELECT name, phone FROM users WHERE id = $1;
+    `,[userId]);
     return result.rows[0];
 }
 
 module.exports = {
     createUser,
-    getUserByPhone
+    getUserById
 };

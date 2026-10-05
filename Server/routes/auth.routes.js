@@ -9,7 +9,7 @@ router.use(cookieparser());
 
 router.post("/signup", validator.validateRegister, authcontroller.register);
 router.get("/getme", authcontroller.getme);
-//router.post("/refresh-token", authcontroller.refreshToken);
+router.get("/refresh-token", authcontroller.refreshToken);
 
 module.exports = router;
 
