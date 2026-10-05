@@ -14,7 +14,7 @@ async function createUser(name, phone, password_hash) {
 
 async function getUserByPhone(phone) {
     const result = await db.query(`
-        SELECT * FROM users WHERE phone = $1 RETURNING *;
+        SELECT name, phone FROM users WHERE phone = $1;
     `,[phone]);
     return result.rows[0];
 }
