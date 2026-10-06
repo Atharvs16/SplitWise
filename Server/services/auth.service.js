@@ -69,14 +69,18 @@ async function register({ name, phone, password, ip, userAgent }) {
     }
 }
 
-async function getme(token) {
+async function getme(accessToken) {
     try{
-        const decoded = jwt.verify(token, config.JWT_SECRET);
+        const decoded = jwt.verify(accessToken, config.JWT_SECRET);
 
         if (!decoded) {
             throw new Error("Invalid token");
         }
         
+        const session = await sessionQueries.getSessionById(decoded.sessionId, decoded.userId);
+        if (!session || session.revoked) {
+            throw new Error("Session is revoked or not found");
+        }
         const user = await userQueries.getUserById(decoded.userId);
         if (!user) {
             throw new Error("User not found");
@@ -142,8 +146,20 @@ async function refreshToken(refreshToken) {
     }
 }
 
+async function logout(refreshToken) {
+    try{
+        const decoded = jwt.verify(refreshToken, config.JWT_SECRET);
+        await sessionQueries.revokeSession(decoded.sessionId);
+    }
+    catch (error) {
+        console.error(error);
+        throw error;
+    }
+}
+
 module.exports = {
     register,
     getme,
-    refreshToken
+    refreshToken,
+    logout
 };

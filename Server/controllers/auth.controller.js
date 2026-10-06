@@ -1,4 +1,3 @@
-const e = require("express");
 const authService = require("../services/auth.service");
 
 async function register(req, res) {
@@ -37,13 +36,13 @@ async function register(req, res) {
 }
 
 async function getme(req, res) {
-    const token = req.headers.authorization?.split(' ')[1];
-    if (!token) {
+    const accessToken = req.headers.authorization?.split(' ')[1];
+    if (!accessToken) {
         return res.status(401).json({ error: "No token provided" });
     }
 
     try{
-        const user = await authService.getme(token);
+        const user = await authService.getme(accessToken);
         res.status(200).json({ user });
     }
     catch (error) {
@@ -93,8 +92,26 @@ async function refreshToken(req, res) {
     }
 }
 
+async function logout(req, res) {
+    const refreshToken = req.cookies.refreshtoken;
+    if (!refreshToken) {
+        return res.status(401).json({ error: "No refresh token provided" });
+    }
+    
+    try{
+        await authService.logout(refreshToken);
+        res.clearCookie('refreshtoken');
+        res.status(200).json({ message: "Logged out successfully" });
+    }
+    catch (error) {
+        console.error(error);
+        res.status(500).json({ error: error.message || "Database error" });
+    }
+}
+
 module.exports = {
     register,
     getme,
+    logout,
     refreshToken
 };

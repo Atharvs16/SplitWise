@@ -55,8 +55,28 @@ async function updateSessionRefreshToken(sessionId, newRefreshTokenHash) {
     }
 }
 
+async function revokeSession(sessionId) {
+    try{
+        const query = `
+            UPDATE sessions
+            SET revoked = true
+            WHERE id = $1
+            RETURNING *;
+        `;
+        const values = [sessionId];
+
+        const result = await db.query(query, values);
+        return result.rows[0];
+    }
+    catch (error) {
+        console.error(error);
+        throw error;
+    }
+}
+
 module.exports = {
     createSession,
     getSessionById,
-    updateSessionRefreshToken
+    updateSessionRefreshToken,
+    revokeSession
 };
