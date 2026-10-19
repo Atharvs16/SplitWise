@@ -7,6 +7,8 @@ import {
   ArrowUpRight,
 } from "lucide-react";
 import "./LandingNavbar.css";
+
+import { Link } from "react-router-dom";
 import Logo from "/favicon.svg"
 
 export default function LandingNavbar() {
@@ -56,7 +58,7 @@ export default function LandingNavbar() {
             </a>
 
             <a
-              href="/signup"
+              href="/Auth"
               className="landing-cta-btn"
               onClick={closeMenu}
             >
@@ -68,11 +70,11 @@ export default function LandingNavbar() {
 
         {/* Desktop Actions */}
         <div className="landing-nav-actions">
-          <a href="/login" className="landing-login-btn">
+          <a href="/Auth?mode=signin" className="landing-login-btn">
             Log in
           </a>
 
-          <a href="/signup" className="landing-cta-btn">
+          <a href="/Auth" className="landing-cta-btn">
             Get started
             <ArrowUpRight size={17} />
           </a>

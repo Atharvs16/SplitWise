@@ -253,7 +253,7 @@ export default function LandingPage() {
               </p>
 
               <div className="hero-actions">
-                <a href="/signup" className="hero-primary-btn">
+                <a href="/Auth" className="hero-primary-btn">
                   Get started for free
                   <ArrowRight size={18} />
                 </a>
@@ -356,7 +356,7 @@ export default function LandingPage() {
                 your shared expenses today.
               </p>
 
-              <a href="/signup" className="cta-button">
+              <a href="/Auth" className="cta-button">
                 Create your free account
                 <ArrowRight size={18} />
               </a>
