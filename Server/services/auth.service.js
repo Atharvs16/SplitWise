@@ -6,13 +6,14 @@ const sessionQueries = require('../queries/services.queries');
 
 const config = require('../config/config');
 
-async function register({ name, phone, password, ip, userAgent }) {
+async function register({ name, phone, username, password, ip, userAgent }) {
     try{
         const Password_hash = await bcrypt.hash(password, 10);
     
         const user = await userQueries.createUser(
             name,
             phone,
+            username,
             Password_hash,
         );
 
@@ -58,13 +59,17 @@ async function register({ name, phone, password, ip, userAgent }) {
     }
 
     catch (error) {
-        if (error.code === '23505') { // Unique violation
-            throw new Error("Phone number already exists");
+        console.error(error);
+        if (error.detail === `Key (username)=(${username}) already exists.`) { // Unique violation
+            throw new Error(`Username ${username} already exists.`);
+        }
+        if (error.detail === `Key (phone)=(${phone}) already exists.`){
+            throw new Error(`Phone ${phone} already exists.`);
+            
         }
         if (error.constraint === 'chk_users_phone_format') { // Phone format violation
             throw new Error("Invalid phone number format");
         }
-        console.error(error);
         throw error;
     }
 }

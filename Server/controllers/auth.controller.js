@@ -6,6 +6,7 @@ async function register(req, res) {
         const result = await authService.register({
             name: req.body.name,
             phone: req.body.phone,
+            username: req.body.username,
             password: req.body.password,
             ip: req.ip,
             userAgent: req.get("User-Agent")

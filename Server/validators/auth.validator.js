@@ -1,3 +1,4 @@
+
 const { z } = require("zod");
 
 const registerSchema = z.object({
@@ -6,6 +7,16 @@ const registerSchema = z.object({
         .trim()
         .min(2, "Name must be at least 2 characters")
         .max(50, "Name must be at most 50 characters"),
+
+    username: z
+        .string()
+        .trim()
+        .min(3, "Username must be at least 3 characters")
+        .max(20, "Username must be at most 20 characters")
+        .regex(
+            /^[a-zA-Z0-9_]+$/,
+            "Username can only contain letters, numbers, and underscores"
+        ),
 
     phone: z
         .string()

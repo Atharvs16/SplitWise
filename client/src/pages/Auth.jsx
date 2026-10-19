@@ -238,15 +238,15 @@ function Auth() {
               <h1>
                 {mode === "signin" ? (
                   <>
-                    Good to see
+                    Good to see you
                     <br />
-                    <span>you again.</span>
+                    <span>again.</span>
                   </>
                 ) : (
                   <>
                     Let’s make
                     <br />
-                    <span>life simpler.</span>
+                    <span>expenses simpler.</span>
                   </>
                 )}
               </h1>
@@ -475,7 +475,7 @@ function Auth() {
                 </button>
 
                 <p className="auth-switch-copy">
-                  New around here?{" "}
+                  New here?{" "}
                   <button
                     type="button"
                     onClick={() => switchMode("signup")}
@@ -727,11 +727,11 @@ function Auth() {
                 GOOD FRIENDS. CLEAR BALANCES.
               </p>
               <h2>
-                Money stuff,
+                Expenses together?
                 <br />
-                <span>minus the</span>
+                <span>split the</span>
                 <br />
-                awkward.
+                awkwardness.
               </h2>
               <p className="auth-visual-description">
                 Trips, dinners, rent, that one friend who always forgets.
