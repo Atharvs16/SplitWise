@@ -1,0 +1,60 @@
+
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none">
+  <rect x="4" y="4" width="120" height="120" rx="30" fill="#16a36a"/>
+
+  <!-- Circular flow: shared expenses -->
+  <path
+    d="M38 44 A30 30 0 0 1 84 34"
+    stroke="#ffffff"
+    stroke-width="7"
+    stroke-linecap="round"
+  />
+  <path
+    d="M77 23 L87 32 L76 39"
+    stroke="#ffffff"
+    stroke-width="7"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+
+  <path
+    d="M90 84 A30 30 0 0 1 44 94"
+    stroke="#eaf8f1"
+    stroke-width="7"
+    stroke-linecap="round"
+  />
+  <path
+    d="M51 105 L41 96 L52 89"
+    stroke="#eaf8f1"
+    stroke-width="7"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+
+  <!-- Two sides of a shared payment -->
+  <circle cx="48" cy="57" r="12" fill="#ffffff"/>
+  <circle cx="80" cy="71" r="12" fill="#128455"/>
+
+  <!-- Minimal payment symbols -->
+  <path
+    d="M43 57 H53 M48 52 V62"
+    stroke="#16a36a"
+    stroke-width="2.8"
+    stroke-linecap="round"
+  />
+  <path
+    d="M75 71 H85"
+    stroke="#ffffff"
+    stroke-width="2.8"
+    stroke-linecap="round"
+  />
+
+  <!-- Balance between the two sides -->
+  <path
+    d="M64 52 V76"
+    stroke="#ffffff"
+    stroke-width="5"
+    stroke-linecap="round"
+    opacity="0.9"
+  />
+</svg>
