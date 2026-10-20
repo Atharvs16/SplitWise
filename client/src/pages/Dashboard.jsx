@@ -85,18 +85,40 @@ const formatMoney = (amount) =>
     }).format(Math.abs(amount));
 
 export default function Dashboard() {
-    const { accessToken } = useAuth();
+    const { accessToken, loading: authLoading } = useAuth();
+    const [loading, setLoading] = useState(true);
     const [data, setData] = useState(null);
-    useEffect(()=>{
-        fetch('/api/auth/getme', {
-            headers: { Authorization: `Bearer ${accessToken}` }
-        })
-        .then(res => res.json())
-        .then(setData)
-        .then(console.log);
-        },
-    [accessToken]);
-    
+    useEffect(() => {
+        if (!accessToken) return;
+        const fetchMe = async () => {
+            try {
+                setLoading(true);
+
+                const res = await fetch("/api/auth/refresh-token", {
+                    method: 'POST',
+                    headers: {
+                        Authorization: `Bearer ${accessToken}`,
+                    },
+                });
+                const result = await res.json();
+                if (!res.ok) {
+                    throw new Error(result.message || "Failed to fetch user");
+                }
+                setData(result)
+                if(!loading){
+                    console.log(data);
+                }
+            } catch (error) {
+                console.error("Fetch error:", error);
+            }
+            finally{
+                setLoading(false);
+            }
+        };
+
+        fetchMe();
+    }, [accessToken]);
+
 
     const [expenses, setExpenses] = useState(initialExpenses);
     const [activeNav, setActiveNav] = useState("Dashboard");
@@ -183,6 +205,10 @@ export default function Dashboard() {
         { label: "Settlements", icon: "⇄" },
     ];
 
+    if(loading){
+        return <p>Loading user data...</p>;
+    }
+
     return (
         <div className="se-app">
             <aside className="se-sidebar">
@@ -230,7 +256,7 @@ export default function Dashboard() {
                     <div className="se-profile">
                         <div className="se-avatar avatar-green">A</div>
                         <div className="se-profile-info">
-                            <strong>Atharv</strong>
+                            <strong>{data.user.name}</strong>
                             <span>Personal account</span>
                         </div>
                         <button

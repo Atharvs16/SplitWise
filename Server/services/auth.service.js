@@ -237,9 +237,6 @@ async function refreshToken(refreshToken) {
             throw new Error("Invalid refresh token");
         }
 
-        console.log("Decoded refresh token:", decoded);
-        
-
         const sessionResult = await sessionQueries.getSessionById(decoded.sessionId, decoded.userId);
         if (sessionResult === undefined || sessionResult === null) {
             throw new Error("Session not found");
@@ -255,21 +252,28 @@ async function refreshToken(refreshToken) {
             throw new Error("Invalid refresh token");
         }
 
+        
         const newRefreshToken = jwt.sign({
             userId: decoded.userId,
             sessionId: session.id
         }, config.JWT_SECRET, { expiresIn: '7d' });
         const newRefreshTokenHash = await bcrypt.hash(newRefreshToken, 10);
-
+        
         await sessionQueries.updateSessionRefreshToken(session.id, newRefreshTokenHash);
-
+        
         const newAccessToken = jwt.sign({
             userId: decoded.userId,
             sessionId: session.id
         }, config.JWT_SECRET, { expiresIn: '15m' });
+        
+        const user = await userQueries.getUserById(decoded.userId);
 
         return {
-            userId: decoded.userId,
+            user: {
+                name: user.name,
+                username: user.username,
+                phone: user.phone
+            },
             accessToken: newAccessToken,
             refreshToken: newRefreshToken
         };

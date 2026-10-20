@@ -10,7 +10,7 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const refreshSession = async () => {
       try {
-        const response = await fetch('/api/refresh-token', {
+        const response = await fetch('/api/auth/refresh-token', {
           method: 'POST',
           credentials: 'include', // Crucial for sending secure cookies
         });
@@ -36,7 +36,7 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ accessToken, login, logout, loading }}>
+    <AuthContext.Provider value={{ accessToken, setAccessToken, login, logout, loading }}>
       {!loading && children}
     </AuthContext.Provider>
   );

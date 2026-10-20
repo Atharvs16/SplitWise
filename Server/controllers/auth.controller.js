@@ -37,7 +37,6 @@ async function register(req, res) {
     }
 }
 
-
 async function login(req, res) {
     try {
         const result = await authService.login({
@@ -118,7 +117,11 @@ async function refreshToken(req, res) {
         });
 
         res.status(200).json({
-            userId: result.userId,
+            user: {
+                name: result.user.name,
+                username: result.user.username,
+                phone: result.user.phone
+            },
             accessToken: result.accessToken
         });
     }
