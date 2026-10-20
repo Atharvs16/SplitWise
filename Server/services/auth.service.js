@@ -52,6 +52,7 @@ async function register({ name, phone, username, password, ip, userAgent }) {
         return {
             id: user.id,
             name: user.name,
+            username: user.username,
             accessToken,
             refreshToken
         };
@@ -71,6 +72,134 @@ async function register({ name, phone, username, password, ip, userAgent }) {
             throw new Error("Invalid phone number format");
         }
         throw error;
+    }
+}
+
+
+async function login({ username, phone, password, ip, userAgent }) {
+    try {
+        if ((!username && !phone) || (username && phone)) {
+            return {
+                statusCode: 400,
+                success: false,
+                message: "Provide either username or phone, not both."
+            };
+        }
+        if (typeof password !== "string" || !password.trim()) {
+            return {
+                statusCode: 400,
+                success: false,
+                message: "Password is required."
+            };
+        }
+        if ((username !== undefined && typeof username !== "string") || (phone !== undefined && typeof phone !== "string")) {
+            return {
+                statusCode: 400,
+                success: false,
+                message: "Invalid login credentials format."
+            };
+        }
+        
+        const identifier = username
+            ? username.trim()
+            : phone.trim();
+
+        if (!identifier) {
+            return {
+                statusCode: 400,
+                success: false,
+                message: "Username or phone is required."
+            };
+        }
+
+        
+        const user = username
+            ? await userQueries.getUserByUsername(identifier)
+            : await userQueries.getUserByPhone(identifier);
+
+        console.log("Fetched user:", user);
+        if (!user || !user.password_hash) {
+            return {
+                statusCode: 401,
+                success: false,
+                message: "Invalid username/phone or password."
+            };
+        }
+
+        console.log(user.password_hash);
+        console.log(password);
+
+        
+        const isMatch = await bcrypt.compare(
+            password,
+            user.password_hash
+        );
+
+        console.log(isMatch);
+
+        if (!isMatch) {
+            return {
+                statusCode: 401,
+                success: false,
+                message: "Invalid username/phone or password."
+            };
+        }
+
+        // Add account-status checks here if your app supports them.
+        // For example, disabled or unverified accounts.
+
+        const session = await sessionQueries.createSession(
+            user.id,
+            null,
+            ip,
+            userAgent
+        );
+
+        const refreshToken = jwt.sign(
+            {
+                userId: user.id,
+                sessionId: session.id
+            },
+            config.JWT_SECRET,
+            {
+                expiresIn: "7d"
+            }
+        );
+    
+        const refreshTokenHash = await bcrypt.hash(refreshToken, 10);
+
+        await sessionQueries.updateSessionRefreshToken(
+            session.id,
+            refreshTokenHash
+        );
+    
+        const accessToken = jwt.sign(
+            {
+                userId: user.id,
+                sessionId: session.id
+            }, config.JWT_SECRET, { expiresIn: '15m' }
+        );
+    
+        return {
+            statusCode: 200,
+            success: true,
+            message: "Login successful.",
+            id: user.id,
+            name: user.name,
+            phone: user.phone,
+            username: user.username,
+            accessToken,
+            refreshToken
+        };
+
+    } catch (err) {
+        console.error("Login error:", err);
+
+        return {
+            statusCode: 500,
+            success: false,
+            message: "An unexpected error occurred."
+        };
     }
 }
 
@@ -164,6 +293,7 @@ async function logout(refreshToken) {
 
 module.exports = {
     register,
+    login,
     getme,
     refreshToken,
     logout

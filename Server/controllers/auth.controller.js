@@ -24,6 +24,7 @@ async function register(req, res) {
             user: {
                 id: result.id,
                 name: result.name,
+                username: result.username,
                 phone: result.phone
             },
             accessToken: result.accessToken
@@ -33,6 +34,54 @@ async function register(req, res) {
     catch (error) {
         console.error(error);
         res.status(500).json({ error: error.message || "Database error" });
+    }
+}
+
+
+async function login(req, res) {
+    try {
+        const result = await authService.login({
+            username: req.body.username,
+            phone: req.body.phone,
+            password: req.body.password,
+            ip: req.ip,
+            userAgent: req.get("User-Agent")
+        });
+
+        if (!result.success) {
+            return res.status(result.statusCode).json({
+                success: false,
+                message: result.message
+            });
+        }
+
+        res.cookie("refreshtoken", result.refreshToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "strict",
+            maxAge: 7 * 24 * 60 * 60 * 1000,
+            path: "/"
+        });
+
+        return res.status(result.statusCode).json({
+            success: true,
+            message: result.message,
+            user: {
+                id: result.id,
+                name: result.name,
+                username: result.username,
+                phone: result.phone
+            },
+            accessToken: result.accessToken
+        });
+
+    } catch (error) {
+        console.error("Login controller error:", error);
+
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error"
+        });
     }
 }
 
@@ -112,6 +161,7 @@ async function logout(req, res) {
 
 module.exports = {
     register,
+    login,
     getme,
     logout,
     refreshToken

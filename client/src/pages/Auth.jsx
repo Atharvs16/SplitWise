@@ -1,6 +1,6 @@
-
 import { useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
+import { useAuth } from '../AuthContext';
 import "./Auth.css";
 
 const initialSignup = {
@@ -45,6 +45,8 @@ function getPasswordStrength(password) {
 }
 
 function Auth() {
+  const navigate = useNavigate();
+  const { login: fetchtoken } = useAuth();
   const [searchParams] = useSearchParams();
   const [mode, setMode] = useState(
     searchParams.get("mode") === "signin" ? "signin" : "signup"
@@ -54,6 +56,7 @@ function Auth() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const [signup, setSignup] = useState(initialSignup);
+
   const [login, setLogin] = useState({
     identifier: "",
     password: "",
@@ -102,7 +105,7 @@ function Auth() {
     return /^[6-9]\d{9}$/.test(phone);
   }
 
-  function handleSignup(event) {
+  async function handleSignup(event) {
     event.preventDefault();
     setError("");
     setMessage("");
@@ -138,11 +141,41 @@ function Auth() {
       "Your details look good! Connect your registration API to create your account."
     );
 
+    try {
+      const response = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: signup.name,
+          phone: signup.phone,
+          username: signup.username,
+          password: signup.password,
+        }),
+      });
+
+      const data = await response.json();
+
+      console.log(data);
+      if (!response.ok) {
+        throw new Error(data.message || data.error || "Signup failed");
+      }
+      fetchtoken(data.accessToken);
+
+      // Navigate only after successful signup
+      navigate("/dashboard");
+
+    } catch (err) {
+      console.error("Signup failed:", err);
+      setError(err.message || "Something went wrong.");
+    }
+
     // TODO: Send signup details to your backend.
     // Never store plaintext passwords in localStorage.
   }
 
-  function handleLogin(event) {
+  async function handleLogin(event) {
     event.preventDefault();
     setError("");
     setMessage("");
@@ -151,6 +184,7 @@ function Auth() {
       setError("Enter your phone number or username.");
       return;
     }
+    const isPhone = /^\+?\d{10,15}$/.test(login.identifier);
 
     if (loginMethod === "password") {
       if (!login.password) {
@@ -158,9 +192,39 @@ function Auth() {
         return;
       }
 
+      try {
+        const response = await fetch("/api/auth/login", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            ...(isPhone
+              ? { phone: login.identifier.trim() }
+              : { username: login.identifier.trim() }),
+            password: login.password,
+          }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.message || data.error || "Signup failed");
+        }
+        fetchtoken(data.accessToken);
+
+        // Navigate only after successful signup
+        navigate("/dashboard");
+      }
+      catch (err) {
+        console.error("Signup failed:", err);
+        setError(err.message || "Something went wrong.");
+      }
+
       setMessage(
         "Form validated. Connect your login API to authenticate your account."
       );
+
 
       // TODO: Send credentials to your backend over HTTPS.
       return;
@@ -280,9 +344,8 @@ function Auth() {
               </button>
 
               <span
-                className={`auth-tab-indicator ${
-                  mode === "signup" ? "indicator-right" : ""
-                }`}
+                className={`auth-tab-indicator ${mode === "signup" ? "indicator-right" : ""
+                  }`}
               />
             </div>
 
@@ -665,11 +728,10 @@ function Auth() {
 
                   {signup.confirmPassword && (
                     <span
-                      className={`auth-match-hint ${
-                        signup.password === signup.confirmPassword
-                          ? "match-valid"
-                          : ""
-                      }`}
+                      className={`auth-match-hint ${signup.password === signup.confirmPassword
+                        ? "match-valid"
+                        : ""
+                        }`}
                     >
                       {signup.password === signup.confirmPassword
                         ? "✓ Passwords match"

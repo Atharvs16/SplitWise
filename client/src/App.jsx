@@ -1,18 +1,37 @@
-import { useState } from 'react'
 import './App.css'
-import { BrowserRouter, Routes, Route } from "react-router-dom";
 import LandingPage from "./pages/LandingPage";
 import Auth from "./pages/Auth";
+import Dashboard from "./pages/Dashboard"
+import { createBrowserRouter, RouterProvider, BrowserRouter, Routes, Route } from 'react-router-dom';
+import { AuthProvider } from './AuthContext';
+import ProtectedRoute from './components/ProtectedRoute';
 
-function App() {
+const router = createBrowserRouter([
+  {
+    // 1. Your default landing page at "/"
+    path: "/",
+    element: <LandingPage />, 
+  },
+  {
+    path: "/Auth",
+    element: <Auth />,
+  },
+  {
+    // 1. Wrap protected paths inside the ProtectedRoute layout
+    element: <ProtectedRoute />, 
+    children: [
+      {
+        path: "/dashboard",
+        element: <Dashboard />,
+      },
+    ],
+  },
+]);
+
+export default function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/auth" element={<Auth />} />
-      </Routes>
-    </BrowserRouter>
+    <AuthProvider>
+      <RouterProvider router={router} />
+    </AuthProvider>
   );
 }
-
-export default App;

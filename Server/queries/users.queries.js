@@ -14,12 +14,30 @@ async function createUser(name, phone, username, password_hash) {
 
 async function getUserById(userId) {
     const result = await db.query(`
-        SELECT name, phone FROM users WHERE id = $1;
+        SELECT name, username, phone FROM users WHERE id = $1;
     `,[userId]);
     return result.rows[0];
 }
 
+async function getUserByUsername(username) {
+    const result = await db.query(`
+        SELECT id, name, username, phone, password_hash FROM users WHERE username = $1;
+    `,[username]);
+
+    return result.rows[0];
+}
+async function getUserByPhone(phone) {
+    const result = await db.query(`
+        SELECT id, name, username, phone, password_hash FROM users WHERE phone = $1;
+    `,[phone]);
+
+    return result.rows[0];
+}
+
+
 module.exports = {
     createUser,
-    getUserById
+    getUserById,
+    getUserByUsername,
+    getUserByPhone
 };

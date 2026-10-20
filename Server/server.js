@@ -6,8 +6,8 @@ const groups = require('./routes/groups.routes');
 
 app.use(express.json());
 app.use(cookieParser());
-app.use('/auth', auth);
-app.use('/groups', groups);
+app.use('/api/auth', auth);
+app.use('/api/groups', groups);
 
 app.get('/', (req, res) => {
     res.send('Split with SplitWise!');

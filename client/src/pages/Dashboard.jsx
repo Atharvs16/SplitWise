@@ -1,6 +1,6 @@
 
-import { useMemo, useState } from "react";
-import NavBar from "../components/Navbar"
+import { useEffect, useMemo, useState } from "react";
+import { useAuth } from '../AuthContext';
 import "./Dashboard.css";
 
 const initialExpenses = [
@@ -85,6 +85,19 @@ const formatMoney = (amount) =>
     }).format(Math.abs(amount));
 
 export default function Dashboard() {
+    const { accessToken } = useAuth();
+    const [data, setData] = useState(null);
+    useEffect(()=>{
+        fetch('/api/auth/getme', {
+            headers: { Authorization: `Bearer ${accessToken}` }
+        })
+        .then(res => res.json())
+        .then(setData)
+        .then(console.log);
+        },
+    [accessToken]);
+    
+
     const [expenses, setExpenses] = useState(initialExpenses);
     const [activeNav, setActiveNav] = useState("Dashboard");
     const [showExpenseForm, setShowExpenseForm] = useState(false);
@@ -98,6 +111,7 @@ export default function Dashboard() {
     const [settledPerson, setSettledPerson] = useState("Rohan Sharma");
     const [settledAmount, setSettledAmount] = useState("");
     const [settlements, setSettlements] = useState([]);
+
 
     const filteredExpenses = useMemo(
         () =>
