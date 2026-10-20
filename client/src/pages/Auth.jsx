@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useAuth } from '../AuthContext';
 import "./Auth.css";
@@ -56,6 +56,7 @@ function Auth() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const [signup, setSignup] = useState(initialSignup);
+  const [usernameStatus, setUsernameStatus] = useState("idle");
 
   const [login, setLogin] = useState({
     identifier: "",
@@ -69,6 +70,49 @@ function Auth() {
 
   const passwordChecks = getPasswordChecks(signup.password);
   const passwordStrength = getPasswordStrength(signup.password);
+
+  useEffect(() => {
+    const value = signup.username.trim();
+
+    if (value.length < 3) {
+      setUsernameStatus("idle");
+      return;
+    }
+
+    const controller = new AbortController();
+
+    setUsernameStatus("checking");
+
+    const timer = setTimeout(async () => {
+      try {
+        const response = await fetch(
+          `/api/auth/check-username?username=${encodeURIComponent(value)}`,
+          { signal: controller.signal }
+        );
+
+        if (!response.ok) {
+          setUsernameStatus("error");
+          return;
+        }
+
+        const result = await response.json();
+
+        setUsernameStatus(
+          result.available ? "available" : "taken"
+        );
+      } catch (error) {
+        if (error.name !== "AbortError") {
+          setUsernameStatus("error");
+        }
+        console.log(error);
+      }
+    }, 500);
+
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [signup.username]);
 
   function switchMode(nextMode) {
     setMode(nextMode);
@@ -618,11 +662,31 @@ function Auth() {
                       placeholder="Choose a unique username"
                       value={signup.username}
                       onChange={updateSignup}
+
                     />
                   </div>
                   <span className="auth-field-hint">
                     3 to 20 characters. Letters, numbers, and underscores.
                   </span>
+                  {usernameStatus === "checking" && (
+                    <span className="auth-field-hint">Checking username...</span>
+                  )}
+
+                  {usernameStatus === "available" && (
+                    <span className="auth-field-hint" style={{ color: "#2e8400c2" }}>
+                      Username is available ✓
+                    </span>
+                  )}
+
+                  {usernameStatus === "taken" && (
+                    <span className="auth-field-hint" style={{ color: "#c5242491" }}>
+                      Username already exists ✗
+                    </span>
+                  )}
+
+                  {usernameStatus === "error" && (
+                    <span className="auth-field-hint">Unable to check username. Try again.</span>
+                  )}
                 </div>
 
                 <div className="auth-field">

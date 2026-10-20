@@ -1,8 +1,9 @@
 const authService = require("../services/auth.service");
+const userQueries = require('../queries/users.queries');
 
 async function register(req, res) {
 
-    try{
+    try {
         const result = await authService.register({
             name: req.body.name,
             phone: req.body.phone,
@@ -13,13 +14,13 @@ async function register(req, res) {
         });
 
         res.cookie('refreshtoken', result.refreshToken, {
-                httpOnly: true,
-                secure: true,
-                sameSite: 'strict',
-                maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+            httpOnly: true,
+            secure: true,
+            sameSite: 'strict',
+            maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
         });
-    
-    
+
+
         res.status(201).json({
             user: {
                 id: result.id,
@@ -34,6 +35,32 @@ async function register(req, res) {
     catch (error) {
         console.error(error);
         res.status(500).json({ error: error.message || "Database error" });
+    }
+}
+
+async function checkUsername(req, res) {
+    try {
+        const username = req.query.username?.trim();
+
+        if (!username || username.length < 3) {
+            return res.status(400).json({
+                available: false,
+                message: "Username must be at least 3 characters."
+            });
+        }
+
+        const available = await userQueries.isAvailable(username);
+
+        return res.status(200).json({
+            available: available,
+        });
+    }
+    catch (err) {
+        console.error("Username check failed:", err);
+
+        return res.status(500).json({
+            message: "Unable to check username."
+        });
     }
 }
 
@@ -90,7 +117,7 @@ async function getme(req, res) {
         return res.status(401).json({ error: "No token provided" });
     }
 
-    try{
+    try {
         const user = await authService.getme(accessToken);
         res.status(200).json({ user });
     }
@@ -106,7 +133,7 @@ async function refreshToken(req, res) {
         return res.status(401).json({ error: "No refresh token provided" });
     }
 
-    try{
+    try {
         const result = await authService.refreshToken(refreshToken);
 
         res.cookie('refreshtoken', result.refreshToken, {
@@ -150,8 +177,8 @@ async function logout(req, res) {
     if (!refreshToken) {
         return res.status(401).json({ error: "No refresh token provided" });
     }
-    
-    try{
+
+    try {
         await authService.logout(refreshToken);
         res.clearCookie('refreshtoken');
         res.status(200).json({ message: "Logged out successfully" });
@@ -164,6 +191,7 @@ async function logout(req, res) {
 
 module.exports = {
     register,
+    checkUsername,
     login,
     getme,
     logout,

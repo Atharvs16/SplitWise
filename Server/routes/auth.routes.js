@@ -8,6 +8,7 @@ router.use(express.json());
 router.use(cookieparser());
 
 router.post("/signup", validator.validateRegister, authcontroller.register);
+router.get("/check-username", authcontroller.checkUsername);
 router.get("/getme", authcontroller.getme);
 router.post("/login", authcontroller.login)
 router.post("/refresh-token", authcontroller.refreshToken);

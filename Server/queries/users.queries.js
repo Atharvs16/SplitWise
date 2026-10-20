@@ -12,6 +12,15 @@ async function createUser(name, phone, username, password_hash) {
     return result.rows[0];
 };
 
+async function isAvailable(username) {
+    const result = await db.query(
+        "SELECT id FROM users WHERE username = $1",
+        [username]
+    );
+
+    return result.rows.length === 0;
+}
+
 async function getUserById(userId) {
     const result = await db.query(`
         SELECT name, username, phone FROM users WHERE id = $1;
@@ -37,6 +46,7 @@ async function getUserByPhone(phone) {
 
 module.exports = {
     createUser,
+    isAvailable,
     getUserById,
     getUserByUsername,
     getUserByPhone
