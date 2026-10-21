@@ -40,7 +40,7 @@ const initialExpenses = [
         group: "Goa Trip",
         person: "You paid ₹900",
         amount: 300,
-        date: "Oct 16",
+        date: "16",
         icon: "🚕",
         color: "yellow",
     },
@@ -105,13 +105,13 @@ export default function Dashboard() {
                     throw new Error(result.message || "Failed to fetch user");
                 }
                 setData(result)
-                if(!loading){
+                if (!loading) {
                     console.log(data);
                 }
             } catch (error) {
                 console.error("Fetch error:", error);
             }
-            finally{
+            finally {
                 setLoading(false);
             }
         };
@@ -133,6 +133,29 @@ export default function Dashboard() {
     const [settledPerson, setSettledPerson] = useState("Rohan Sharma");
     const [settledAmount, setSettledAmount] = useState("");
     const [settlements, setSettlements] = useState([]);
+    const [greeting, setGreeting] = useState('');
+
+    useEffect(() => {
+        const updateGreeting = () => {
+            const currentHour = new Date().getHours();
+
+            if (currentHour >= 5 && currentHour < 12) {
+                setGreeting('Good Morning');
+            } else if (currentHour >= 12 && currentHour < 17) {
+                setGreeting('Good Afternoon');
+            } else if (currentHour >= 17 && currentHour < 21) {
+                setGreeting('Good Evening');
+            } else {
+                setGreeting('Good Night');
+            }
+        };
+
+        updateGreeting();
+
+        const timer = setInterval(updateGreeting, 60000);
+
+        return () => clearInterval(timer);
+    }, []);
 
 
     const filteredExpenses = useMemo(
@@ -205,8 +228,15 @@ export default function Dashboard() {
         { label: "Settlements", icon: "⇄" },
     ];
 
-    if(loading){
-        return <p>Loading user data...</p>;
+    if (loading) {
+        return (
+            <div class="loadcontainer">
+                <div class="dash uno"></div>
+                <div class="dash dos"></div>
+                <div class="dash tres"></div>
+                <div class="dash cuatro"></div>
+            </div>
+        );
     }
 
     return (
@@ -254,7 +284,7 @@ export default function Dashboard() {
                     </button>
 
                     <div className="se-profile">
-                        <div className="se-avatar avatar-green">A</div>
+                        <div className="se-avatar avatar-green">{data.user.name[0]}</div>
                         <div className="se-profile-info">
                             <strong>{data.user.name}</strong>
                             <span>Personal account</span>
@@ -291,10 +321,17 @@ export default function Dashboard() {
                 <div className="se-content">
                     <section className="se-welcome">
                         <div>
-                            <div className="se-eyebrow">MONDAY, OCTOBER 19</div>
+                            <div className="se-eyebrow">{
+                                new Date().toLocaleDateString('en-US', {
+                                    weekday: 'long',
+                                    year: 'numeric',
+                                    month: 'long',
+                                    day: 'numeric'
+                                })
+                            }</div>
                             <h1>
                                 {activeNav === "Dashboard"
-                                    ? "Good evening, Atharv"
+                                    ? greeting +', ' + data.user.name.split(' ')[0]
                                     : activeNav}
                                 <span className="se-wave"> ✳</span>
                             </h1>
