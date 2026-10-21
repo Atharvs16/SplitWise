@@ -1,5 +1,6 @@
 
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useAuth } from '../AuthContext';
 import "./Dashboard.css";
 
@@ -119,9 +120,15 @@ export default function Dashboard() {
         fetchMe();
     }, [accessToken]);
 
+    const [searchParams, setSearchParams] = useSearchParams();
+    const activeTab = searchParams.get("tab") || "dashboard";
+    const handleTabChange = (tabName) => {
+        setSearchParams({ tab: tabName });
+    }
+
 
     const [expenses, setExpenses] = useState(initialExpenses);
-    const [activeNav, setActiveNav] = useState("Dashboard");
+    const [activeNav, setActiveNav] = useState(activeTab);
     const [showExpenseForm, setShowExpenseForm] = useState(false);
     const [showSettleForm, setShowSettleForm] = useState(false);
     const [search, setSearch] = useState("");
@@ -262,6 +269,7 @@ export default function Dashboard() {
                                 }`}
                             onClick={() => {
                                 setActiveNav(item.label);
+                                handleTabChange(item.label)
                                 setNotice("");
                             }}
                         >
@@ -420,7 +428,11 @@ export default function Dashboard() {
                                         </div>
                                         <button
                                             className="se-text-button"
-                                            onClick={() => setActiveNav("Activity")}
+                                            onClick={() => {
+                                                setActiveNav("Activity");
+                                                handleTabChange("Activity");
+                                            }
+                                            }
                                         >
                                             View all <span>↗</span>
                                         </button>
@@ -537,7 +549,11 @@ export default function Dashboard() {
                                     </div>
                                     <button
                                         className="se-text-button"
-                                        onClick={() => setActiveNav("Friends")}
+                                        onClick={() => {
+                                            setActiveNav("Friends");
+                                            handleTabChange("Friends")
+                                        }
+                                        }
                                     >
                                         All friends <span>↗</span>
                                     </button>

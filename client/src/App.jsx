@@ -5,6 +5,7 @@ import Dashboard from "./pages/Dashboard"
 import { createBrowserRouter, RouterProvider, BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
+import NotFound from './pages/NotFound'
 
 const router = createBrowserRouter([
   {
@@ -21,10 +22,14 @@ const router = createBrowserRouter([
     element: <ProtectedRoute />, 
     children: [
       {
-        path: "/dashboard",
+        path: "/workspace",
         element: <Dashboard />,
       },
     ],
+  },
+  {
+    path: "*",
+    element: <NotFound />
   },
 ]);
 
