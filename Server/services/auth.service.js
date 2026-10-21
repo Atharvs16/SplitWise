@@ -213,7 +213,9 @@ async function getme(accessToken) {
         
         const session = await sessionQueries.getSessionById(decoded.sessionId, decoded.userId);
         if (!session || session.revoked) {
-            throw new Error("Session is revoked or not found");
+            const error = new Error("Session is revoked or not found");
+            error.name = "UnauthorizedError";
+            throw error;
         }
         const user = await userQueries.getUserById(decoded.userId);
         if (!user) {
@@ -222,9 +224,6 @@ async function getme(accessToken) {
         return user;
     }
     catch (error) {
-        if (error.name === 'TokenExpiredError') {
-            throw new Error("Token expired");
-        }
         console.error(error);
         throw error;
     }

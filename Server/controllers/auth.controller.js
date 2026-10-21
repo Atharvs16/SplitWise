@@ -15,9 +15,10 @@ async function register(req, res) {
 
         res.cookie('refreshtoken', result.refreshToken, {
             httpOnly: true,
-            secure: true,
+            secure: process.env.NODE_ENV === "production",
             sameSite: 'strict',
-            maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+            maxAge: 7 * 24 * 60 * 60 * 1000,
+            path: "/"
         });
 
 
@@ -123,6 +124,9 @@ async function getme(req, res) {
     }
     catch (error) {
         console.error(error);
+        if (["TokenExpiredError", "JsonWebTokenError", "UnauthorizedError"].includes(error.name)) {
+            return res.status(401).json({ error: error.message || "Invalid access token" });
+        }
         res.status(500).json({ error: error.message || "Database error" });
     }
 }
@@ -173,7 +177,12 @@ async function logout(req, res) {
 
     try {
         await authService.logout(refreshToken);
-        res.clearCookie('refreshtoken');
+        res.clearCookie('refreshtoken', {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "strict",
+            path: "/"
+        });
         res.status(200).json({ message: "Logged out successfully" });
     }
     catch (error) {

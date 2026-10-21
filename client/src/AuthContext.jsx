@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 
 const AuthContext = createContext(null);
 
@@ -6,19 +6,51 @@ export function AuthProvider({ children }) {
   const [accessToken, setAccessToken] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Silent refresh on app mount to get token securely from HttpOnly cookie
+  const refreshAccessToken = useCallback(async () => {
+    const response = await fetch('/api/auth/refresh-token', {
+      method: 'POST',
+      credentials: 'include',
+    });
+
+    if (!response.ok) {
+      setAccessToken(null);
+      return null;
+    }
+
+    const data = await response.json();
+    if (!data.accessToken) {
+      throw new Error('Refresh response did not include an access token.');
+    }
+
+    setAccessToken(data.accessToken);
+    return data.accessToken;
+  }, []);
+
+  const authenticatedFetch = useCallback(async (url, options = {}) => {
+    const sendRequest = (token) => {
+      const headers = new Headers(options.headers);
+      headers.set('Authorization', `Bearer ${token}`);
+      return fetch(url, { ...options, headers });
+    };
+
+    let response = await sendRequest(accessToken);
+    if (response.status !== 401) {
+      return response;
+    }
+
+    const renewedToken = await refreshAccessToken();
+    if (!renewedToken) {
+      return response;
+    }
+
+    response = await sendRequest(renewedToken);
+    return response;
+  }, [accessToken, refreshAccessToken]);
+
   useEffect(() => {
     const refreshSession = async () => {
       try {
-        const response = await fetch('/api/auth/refresh-token', {
-          method: 'POST',
-          credentials: 'include', // Crucial for sending secure cookies
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          setAccessToken(data.accessToken);
-        }
+        await refreshAccessToken();
       } catch (err) {
         console.error("Session restoration failed:", err);
       } finally {
@@ -27,16 +59,15 @@ export function AuthProvider({ children }) {
     };
 
     refreshSession();
-  }, []);
+  }, [refreshAccessToken]);
 
   const login = (token) => setAccessToken(token);
-  const signup = (token) => setAccessToken(token);
   const logout = () => {
     setAccessToken(null);
   };
 
   return (
-    <AuthContext.Provider value={{ accessToken, setAccessToken, login, logout, loading }}>
+    <AuthContext.Provider value={{ accessToken, setAccessToken, login, logout, loading, authenticatedFetch }}>
       {!loading && children}
     </AuthContext.Provider>
   );

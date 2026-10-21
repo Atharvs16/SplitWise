@@ -157,7 +157,7 @@ const formatMoney = (amount) =>
 
 export default function Dashboard() {
     const navigate = useNavigate();
-    const { accessToken, loading: authLoading, setAccessToken } = useAuth();
+    const { accessToken, authenticatedFetch, setAccessToken } = useAuth();
     const [loading, setLoading] = useState(true);
     const [data, setData] = useState(null);
     useEffect(() => {
@@ -166,8 +166,8 @@ export default function Dashboard() {
             try {
                 setLoading(true);
 
-                const res = await fetch("/api/auth/refresh-token", {
-                    method: 'POST',
+                const res = await authenticatedFetch("/api/auth/getme", {
+                    method: 'GET',
                     headers: {
                         Authorization: `Bearer ${accessToken}`,
                     },
@@ -176,10 +176,7 @@ export default function Dashboard() {
                 if (!res.ok) {
                     throw new Error(result.message || "Failed to fetch user");
                 }
-                setData(result)
-                if (!loading) {
-                    console.log(data);
-                }
+                setData(result);
             } catch (error) {
                 console.error("Fetch error:", error);
             }
@@ -189,7 +186,7 @@ export default function Dashboard() {
         };
 
         fetchMe();
-    }, [accessToken]);
+    }, [accessToken, authenticatedFetch]);
 
     const [searchParams, setSearchParams] = useSearchParams();
     const activeTab = searchParams.get("tab") || "Dashboard";
@@ -416,9 +413,9 @@ export default function Dashboard() {
                     </button>
 
                     <div className="se-profile" ref={menuRef}>
-                        <div className="se-avatar avatar-green">{data.user.name[0]}</div>
+                        <div className="se-avatar avatar-green">{data?.user?.name?.[0] || "?"}</div>
                         <div className="se-profile-info">
-                            <strong>{data.user.name}</strong>
+                            <strong>{data?.user?.name || "Loading account..."}</strong>
                             <span>Personal account</span>
                         </div>
                         <button
@@ -547,7 +544,7 @@ export default function Dashboard() {
                             }</div>
                             <h1>
                                 {activeNav === "Dashboard"
-                                    ? greeting + ', ' + data.user.name.split(' ')[0]
+                                    ? greeting + ', ' + (data?.user?.name?.split(' ')[0] || "there")
                                     : activeNav}
                                 <span className="se-wave"> ✳</span>
                             </h1>
