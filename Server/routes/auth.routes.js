@@ -12,7 +12,7 @@ router.get("/check-username", authcontroller.checkUsername);
 router.get("/getme", authcontroller.getme);
 router.post("/login", authcontroller.login)
 router.post("/refresh-token", authcontroller.refreshToken);
-router.get("/logout", authcontroller.logout);
+router.post("/logout", authcontroller.logout);
 
 module.exports = router;
 

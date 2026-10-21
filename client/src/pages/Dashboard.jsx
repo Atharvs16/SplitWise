@@ -1,6 +1,5 @@
-
-import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useEffect, useMemo, useState, useRef } from "react";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { useAuth } from '../AuthContext';
 import "./Dashboard.css";
 
@@ -78,6 +77,77 @@ const people = [
     { name: "Kabir Verma", initials: "KV", amount: -1000 },
 ];
 
+const menuItems = [
+    {
+        label: "My Profile",
+        description: "View your personal details",
+        icon: "user",
+        to: "/profile",
+    },
+    {
+        label: "Account Settings",
+        description: "Manage your preferences",
+        icon: "settings",
+        to: "/settings",
+    },
+    {
+        label: "Help & Support",
+        description: "We're here to help",
+        icon: "help",
+        to: "/help",
+    },
+];
+
+function MenuIcon({ name }) {
+    const paths = {
+        user: (
+            <>
+                <circle cx="12" cy="8" r="3.5" />
+                <path d="M5 20c0-4 2.8-6 7-6s7 2 7 6" />
+            </>
+        ),
+        settings: (
+            <>
+                <circle cx="12" cy="12" r="3" />
+                <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-1.8 3.1-.2-.1a1.7 1.7 0 0 0-1.9.3l-.1.1h-3.6l-.1-.2a1.7 1.7 0 0 0-1.5-1l-.4.1-.2.1-3.1-1.8.1-.2a1.7 1.7 0 0 0-.3-1.9l-.1-.1v-3.6l.2-.1a1.7 1.7 0 0 0 1-1.5l-.1-.4-.1-.2 1.8-3.1.2.1a1.7 1.7 0 0 0 1.9-.3l.1-.1h3.6l.1.2a1.7 1.7 0 0 0 1.5 1l.4-.1.2-.1 3.1 1.8-.1.2a1.7 1.7 0 0 0 .3 1.9l.1.1V15z" />
+            </>
+        ),
+        wallet: (
+            <>
+                <rect x="3" y="6" width="18" height="14" rx="2" />
+                <path d="M3 10h18M16 15h.01M6 6V4h12v2" />
+            </>
+        ),
+        help: (
+            <>
+                <circle cx="12" cy="12" r="9" />
+                <path d="M9.5 9a2.5 2.5 0 1 1 4.2 1.8c-1.1 1-1.7 1.2-1.7 2.7M12 17h.01" />
+            </>
+        ),
+        logout: (
+            <>
+                <path d="M10 17l5-5-5-5M15 12H3" />
+                <path d="M12 3h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6" />
+            </>
+        ),
+    };
+
+    return (
+        <svg
+            className="account-menu-icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.7"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+        >
+            {paths[name]}
+        </svg>
+    );
+}
+
 const formatMoney = (amount) =>
     new Intl.NumberFormat("en-IN", {
         style: "currency",
@@ -86,7 +156,8 @@ const formatMoney = (amount) =>
     }).format(Math.abs(amount));
 
 export default function Dashboard() {
-    const { accessToken, loading: authLoading } = useAuth();
+    const navigate = useNavigate();
+    const { accessToken, loading: authLoading, setAccessToken } = useAuth();
     const [loading, setLoading] = useState(true);
     const [data, setData] = useState(null);
     useEffect(() => {
@@ -121,9 +192,46 @@ export default function Dashboard() {
     }, [accessToken]);
 
     const [searchParams, setSearchParams] = useSearchParams();
-    const activeTab = searchParams.get("tab") || "dashboard";
+    const activeTab = searchParams.get("tab") || "Dashboard";
     const handleTabChange = (tabName) => {
         setSearchParams({ tab: tabName });
+    }
+    const [isOpen, setIsOpen] = useState(false);
+    const menuRef = useRef(null);
+    const buttonRef = useRef(null);
+
+
+    useEffect(() => {
+        function handleOutsideClick(event) {
+            if (
+                menuRef.current &&
+                !menuRef.current.contains(event.target)
+            ) {
+                setIsOpen(false);
+            }
+        }
+
+        function handleEscape(event) {
+            if (event.key === "Escape") {
+                setIsOpen(false);
+                setConfirmLogout(false);
+                buttonRef.current?.focus();
+            }
+        }
+
+        // Capture clicks even when other handlers stop propagation.
+        document.addEventListener("click", handleOutsideClick, true);
+        document.addEventListener("keydown", handleEscape);
+
+        return () => {
+            document.removeEventListener("click", handleOutsideClick, true);
+            document.removeEventListener("keydown", handleEscape);
+        };
+    }, []);
+
+
+    function closeMenu() {
+        setIsOpen(false);
     }
 
 
@@ -140,6 +248,7 @@ export default function Dashboard() {
     const [settledPerson, setSettledPerson] = useState("Rohan Sharma");
     const [settledAmount, setSettledAmount] = useState("");
     const [settlements, setSettlements] = useState([]);
+    const [confirmLogout, setConfirmLogout] = useState(false)
     const [greeting, setGreeting] = useState('');
 
     useEffect(() => {
@@ -174,6 +283,21 @@ export default function Dashboard() {
             ),
         [expenses, search]
     );
+
+    async function handleLogout() {
+        try {
+            await fetch("/api/auth/logout", {
+                method: "POST",
+                credentials: "include",
+            });
+            navigate("/auth");
+
+        } catch (error) {
+            console.error("Logout request failed:", error);
+        } finally {
+            setAccessToken(null)
+        }
+    }
 
     function addExpense(event) {
         event.preventDefault();
@@ -237,11 +361,11 @@ export default function Dashboard() {
 
     if (loading) {
         return (
-            <div class="loadcontainer">
-                <div class="dash uno"></div>
-                <div class="dash dos"></div>
-                <div class="dash tres"></div>
-                <div class="dash cuatro"></div>
+            <div className="loadcontainer">
+                <div className="dash uno"></div>
+                <div className="dash dos"></div>
+                <div className="dash tres"></div>
+                <div className="dash cuatro"></div>
             </div>
         );
     }
@@ -249,7 +373,7 @@ export default function Dashboard() {
     return (
         <div className="se-app">
             <aside className="se-sidebar">
-                <a href="/" className="se-brand" >
+                <a href="/workspace" className="se-brand" >
                     <span className="se-brand-mark">
                         <img src="/favicon.svg" alt="" width="40" height="40" />
                     </span>
@@ -291,19 +415,103 @@ export default function Dashboard() {
                         Settings
                     </button>
 
-                    <div className="se-profile">
+                    <div className="se-profile" ref={menuRef}>
                         <div className="se-avatar avatar-green">{data.user.name[0]}</div>
                         <div className="se-profile-info">
                             <strong>{data.user.name}</strong>
                             <span>Personal account</span>
                         </div>
                         <button
-                            className="se-more"
-                            aria-label="Account options"
-                            onClick={() => setNotice("Account menu coming soon.")}
+                            ref={buttonRef}
+                            className={`se-more account-menu-trigger ${isOpen ? "active" : ""}`}
+                            aria-label="Open account menu"
+                            aria-haspopup="menu"
+                            aria-expanded={isOpen}
+                            onClick={() => setIsOpen((prev) => !prev)}
                         >
                             ···
                         </button>
+                        {isOpen && <div className="account-dropdown" role="menu">
+                            <div className="dropdown-heading">
+                                <span className="dropdown-heading-title">Your account</span>
+                                <span className="dropdown-heading-subtitle">
+                                    Manage your SplitEase account
+                                </span>
+                            </div>
+
+                            <div className="dropdown-divider" />
+
+                            <nav className="account-menu-links" aria-label="Account options">
+                                {menuItems.map((item) => (
+                                    <button
+                                        key={item.label}
+                                        to={item.to}
+                                        className="account-menu-item"
+                                        role="menuitem"
+                                        onClick={closeMenu}
+                                    >
+                                        <span className="menu-item-icon">
+                                            <MenuIcon name={item.icon} />
+                                        </span>
+
+                                        <span className="menu-item-content">
+                                            <span className="menu-item-label">{item.label}</span>
+                                            <span className="menu-item-description">
+                                                {item.description}
+                                            </span>
+                                        </span>
+
+                                        <span className="menu-item-arrow">›</span>
+                                    </button>
+                                ))}
+                            </nav>
+
+                            <div className="dropdown-divider" />
+
+                            <button
+                                type="button"
+                                className="account-logout-button"
+                                role="menuitem"
+                                onClick={() => setConfirmLogout(true)}
+                            >
+                                <span className="menu-item-icon logout-icon">
+                                    <MenuIcon name="logout" />
+                                </span>
+                                <span>Log Out</span>
+                            </button>
+
+                            <div className="dropdown-footer">
+                                Made for sharing, built for simplicity.
+                            </div>
+                        {confirmLogout && <div className="logout-overlay1">
+                            <div
+                                className="logout-box1"
+                            >
+                                <div className="logout-icon1">↗</div>
+
+                                <h3>Confirm logout?</h3>
+                                <p>
+                                    Are you sure you want to log out of SplitEase?
+                                </p>
+
+                                <div className="logout-actions1">
+                                    <button
+                                        className="logout-cancel1"
+                                        onClick={() => setConfirmLogout(false)}
+                                    >
+                                        Cancel
+                                    </button>
+
+                                    <button
+                                        className="logout-confirm1"
+                                        onClick={handleLogout}
+                                    >
+                                        Logout
+                                    </button>
+                                </div>
+                            </div>
+                        </div>}
+                        </div>}
                     </div>
                 </div>
             </aside>
@@ -339,7 +547,7 @@ export default function Dashboard() {
                             }</div>
                             <h1>
                                 {activeNav === "Dashboard"
-                                    ? greeting +', ' + data.user.name.split(' ')[0]
+                                    ? greeting + ', ' + data.user.name.split(' ')[0]
                                     : activeNav}
                                 <span className="se-wave"> ✳</span>
                             </h1>
@@ -357,12 +565,19 @@ export default function Dashboard() {
                             >
                                 ↔ Settle up
                             </button>
-                            <button
+                            {!(activeNav === "Settlements" || activeNav === "Activity") && <button
                                 className="se-btn se-btn-primary"
-                                onClick={() => setShowExpenseForm(true)}
+                                onClick={() => {
+                                    activeNav === "Friends" ? setShowExpenseForm(true) :
+                                        activeNav === "Groups" ? setShowExpenseForm(true) :
+                                            setShowExpenseForm(true);
+                                }}
                             >
-                                <span>＋</span> Add expense
-                            </button>
+                                <span>＋</span>
+                                {activeNav === "Friends" ? "Add friend" :
+                                    activeNav === "Groups" ? "Add Group" :
+                                        "Add expense"}
+                            </button>}
                         </div>
                     </section>
 

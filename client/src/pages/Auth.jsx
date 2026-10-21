@@ -208,7 +208,7 @@ function Auth() {
       fetchtoken(data.accessToken);
 
       // Navigate only after successful signup
-      navigate("/dashboard");
+      navigate("/workspace");
 
     } catch (err) {
       console.error("Signup failed:", err);
@@ -258,7 +258,7 @@ function Auth() {
         fetchtoken(data.accessToken);
 
         // Navigate only after successful signup
-        navigate("/dashboard");
+        navigate("/workspace");
       }
       catch (err) {
         console.error("Signup failed:", err);

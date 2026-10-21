@@ -251,15 +251,6 @@ async function refreshToken(refreshToken) {
         if (!isValidRefreshToken) {
             throw new Error("Invalid refresh token");
         }
-
-        
-        const newRefreshToken = jwt.sign({
-            userId: decoded.userId,
-            sessionId: session.id
-        }, config.JWT_SECRET, { expiresIn: '7d' });
-        const newRefreshTokenHash = await bcrypt.hash(newRefreshToken, 10);
-        
-        await sessionQueries.updateSessionRefreshToken(session.id, newRefreshTokenHash);
         
         const newAccessToken = jwt.sign({
             userId: decoded.userId,
@@ -275,7 +266,6 @@ async function refreshToken(refreshToken) {
                 phone: user.phone
             },
             accessToken: newAccessToken,
-            refreshToken: newRefreshToken
         };
     }
     catch (error) {

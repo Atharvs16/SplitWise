@@ -9,7 +9,6 @@ import NotFound from './pages/NotFound'
 
 const router = createBrowserRouter([
   {
-    // 1. Your default landing page at "/"
     path: "/",
     element: <LandingPage />, 
   },
@@ -18,7 +17,6 @@ const router = createBrowserRouter([
     element: <Auth />,
   },
   {
-    // 1. Wrap protected paths inside the ProtectedRoute layout
     element: <ProtectedRoute />, 
     children: [
       {
