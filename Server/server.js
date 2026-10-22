@@ -3,11 +3,13 @@ const app = express();
 const cookieParser = require('cookie-parser');
 const auth = require('./routes/auth.routes');
 const groups = require('./routes/groups.routes');
+const friends = require('./routes/friends.routes')
 
 app.use(express.json());
 app.use(cookieParser());
 app.use('/api/auth', auth);
 app.use('/api/groups', groups);
+app.use('/api/friends', friends);
 
 app.get('/', (req, res) => {
     res.send('Split with SplitWise!');

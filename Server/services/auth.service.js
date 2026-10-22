@@ -2,7 +2,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 
 const userQueries = require('../queries/users.queries');
-const sessionQueries = require('../queries/services.queries');
+const sessionQueries = require('../queries/sessions.queries');
 
 const config = require('../config/config');
 
