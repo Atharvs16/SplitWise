@@ -2,8 +2,6 @@ const db = require('../config/db');
 
 async function searchByUsername(id,username) {
     try {
-        console.log(id);
-        console.log(username);
         const query = `
 SELECT
     u.id,
@@ -37,7 +35,6 @@ LIMIT 20;
 `;
 
         const result = await db.query(query, [id,username]);
-        console.log(result.rows)
 
         return result.rows;
     }
@@ -46,6 +43,7 @@ LIMIT 20;
         throw error;
     }
 }
+
 async function searchByPhone(phone) {
     try {
         const query = `SELECT name,username FROM users WHERE phone=$1;`;
@@ -61,7 +59,38 @@ async function searchByPhone(phone) {
     }
 }
 
+async function addFriend(senderId, receiverId) {
+    try {
+        const query = `
+            INSERT INTO friends (sender_id, receiver_id, status)
+            VALUES ($1::UUID, $2::UUID, 'pending')
+            ON CONFLICT DO NOTHING
+            RETURNING *;
+        `;
+
+        const result = await db.query(query, [senderId, receiverId]);
+
+        if (result.rows.length === 0) {
+            return {
+                success: false,
+                message: "Friend request already exists."
+            };
+        }
+
+        return {
+            success: true,
+            message: "Friend request sent successfully.",
+            friendship: result.rows[0]
+        };
+    } catch (error) {
+        console.error("Error sending friend request:", error);
+        throw error;
+    }
+}
+
+
 module.exports = {
     searchByPhone,
-    searchByUsername
+    searchByUsername,
+    addFriend
 }

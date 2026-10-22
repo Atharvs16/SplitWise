@@ -7,6 +7,7 @@ router.use(express.json());
 router.use(cookieparser());
 
 router.post("/search-add-friend", friendsController.searchAddFriend);
+router.post("/add-friend", friendsController.addFriend);
 
 module.exports = router;
 

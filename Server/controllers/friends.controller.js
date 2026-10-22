@@ -18,6 +18,21 @@ async function searchAddFriend(req, res) {
     }
 }
 
+async function addFriend(req, res) {
+    const {receiverId} = req.body;
+    const accessToken = req.headers.authorization?.split(" ")[1];
+    try{
+        const result = await friendsServices.addFriend(accessToken,receiverId);
+        res.status(201).json(result);
+    }
+
+    catch(error){
+        console.log(error);
+        throw error;
+    }
+}
+
 module.exports = {
-    searchAddFriend
+    searchAddFriend,
+    addFriend
 };

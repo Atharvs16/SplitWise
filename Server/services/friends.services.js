@@ -20,7 +20,6 @@ async function userLoggedIn( accessToken) {
 async function searchByUsername(accesstoken, username) {
     try{
         const decoded = await userLoggedIn(accesstoken);
-        console.log(decoded)
         const result = await friendsQueries.searchByUsername(decoded.userId, username);
         return result;
     }
@@ -40,7 +39,20 @@ async function searchByPhone(phone) {
     }
 }
 
+async function addFriend(accesstoken, receiverId) {
+    try{
+        const decoded = await userLoggedIn(accesstoken);
+        const result = await friendsQueries.addFriend(decoded.userId, receiverId);
+        return result;
+    }
+    catch(error){
+        console.log(error);
+        throw error;
+    }
+}
+
 module.exports = {
     searchByUsername,
-    searchByPhone
+    searchByPhone,
+    addFriend
 }
