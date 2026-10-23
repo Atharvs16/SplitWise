@@ -23,7 +23,7 @@ async function isAvailable(username) {
 
 async function getUserById(userId) {
     const result = await db.query(`
-        SELECT name, username, phone FROM users WHERE id = $1;
+        SELECT id, name, username, phone FROM users WHERE id = $1;
     `,[userId]);
     return result.rows[0];
 }
@@ -35,12 +35,27 @@ async function getUserByUsername(username) {
 
     return result.rows[0];
 }
+
 async function getUserByPhone(phone) {
     const result = await db.query(`
         SELECT id, name, username, phone, password_hash FROM users WHERE phone = $1;
     `,[phone]);
 
     return result.rows[0];
+}
+
+async function userLoggedIn( accessToken) {
+    try {
+        const decoded = jwt.verify(accessToken, config.JWT_SECRET);
+        const isrevoked = await getSessionById(decoded.sessionId, decoded.userId);
+        if (isrevoked.revoked) {
+            throw new Error("Session is revoked");
+        }
+        return decoded;
+    } catch (error) {
+        console.error(error);
+        throw error;
+    }
 }
 
 

@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useAuth } from '../AuthContext';
-import FriendSearch from "../components/FriendSearch"
 import "./Dashboard.css";
+import Notifications from "../components/Notifications";
 
 const initialExpenses = [
     {
@@ -234,6 +234,7 @@ export default function Dashboard() {
 
     const [expenses, setExpenses] = useState(initialExpenses);
     const [activeNav, setActiveNav] = useState(activeTab);
+    const [showNotificationTab, setShowNotificationTab] = useState(false);
     const [showExpenseForm, setShowExpenseForm] = useState(false);
     const [showSettleForm, setShowSettleForm] = useState(false);
     const [ShowAddGroupForm, setShowAddGroupForm] = useState(false);
@@ -243,6 +244,11 @@ export default function Dashboard() {
     const [search, setSearch] = useState("");
     const [searchFriend, setSearchFriend] = useState("");
     const [users, setUsers] = useState([]);
+    const [activeFriendTab, setActiveFriendTab] = useState("search");
+    const [friendRequests, setFriendRequests] = useState([]);
+    const [friendRequestsLoading, setFriendRequestsLoading] = useState(false);
+    const [respondingToRequest, setRespondingToRequest] = useState(null);
+    const [friendRequestError, setFriendRequestError] = useState("");
     const [notice, setNotice] = useState("");
     const [expenseTitle, setExpenseTitle] = useState("");
     const [expenseAmount, setExpenseAmount] = useState("");
@@ -334,6 +340,16 @@ export default function Dashboard() {
     }, [searchFriend]);
 
 
+    useEffect(() => {
+        if (!ShowAddFriendForm || activeFriendTab !== "requests") {
+            return;
+        }
+
+        fetchFriendRequests();
+    }, [ShowAddFriendForm, activeFriendTab]);
+
+
+
     const avatarColors = [
         "#FCA5A5",
         "#FDBA74",
@@ -388,11 +404,14 @@ export default function Dashboard() {
             });
 
 
+
             if (!response.ok) {
                 throw new Error(`Request failed: ${response.status}`);
             }
 
             const result = await response.json();
+            console.log(result)
+
             setUsers(result);
             return result;
 
@@ -431,11 +450,82 @@ export default function Dashboard() {
         }
 
         catch (error) {
-            console.log(error);
+            console.error(error);
             throw error;
         }
     }
 
+    const fetchFriendRequests = async () => {
+        try {
+            setFriendRequestsLoading(true);
+            setFriendRequestError("");
+
+            const response = await fetch("/api/friends/requests", {
+                method: "GET",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${accessToken}`,
+                },
+                // Add credentials if your authentication uses cookies:
+                // credentials: "include",
+            });
+
+            if (!response.ok) {
+                throw new Error("Failed to load friend requests");
+            }
+
+            const data = await response.json();
+            setFriendRequests(data.requests ?? []);
+        } catch (error) {
+            console.error(error);
+            setFriendRequestError("Failed to load friend requests.");
+        } finally {
+            setFriendRequestsLoading(false);
+        }
+    };
+
+    const handleFriendRequestResponse = async (requestId, action) => {
+        if (respondingToRequest === "accepted" || respondingToRequest === "rejected") {
+            return;
+        }
+        try {
+            setRespondingToRequest(requestId);
+            setFriendRequestError("");
+
+            const response = await fetch(
+                `/api/friends/requests/${requestId}/${action}`,
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${accessToken}`,
+                    },
+                    // credentials: "include",
+                }
+            );
+            if (!response.ok) {
+                const data = await response.json().catch(() => ({}));
+                throw new Error(
+                    data.message || `Failed to ${action} friend request`
+                );
+            }
+
+            setFriendRequests((previousRequests) =>
+                previousRequests.filter(
+                    (request) => request.id !== requestId
+                )
+            );
+
+            // If accepted, refresh your friends list here if needed.
+        } catch (error) {
+            console.error(error);
+            setFriendRequestError(
+                error.message || `Failed to ${action} friend request.`
+            );
+        } finally {
+            setRespondingToRequest(`${action}ed`);
+        }
+    };
 
     async function handleLogout() {
         try {
@@ -679,7 +769,7 @@ export default function Dashboard() {
                         <button
                             className="se-notification"
                             aria-label="Notifications"
-                            onClick={() => setNotice("You're all caught up!")}
+                            onClick={() => setShowNotificationTab(true)}
                         >
                             ♧
                             <span />
@@ -1245,11 +1335,13 @@ export default function Dashboard() {
             {ShowAddFriendForm && (
                 <div className="se-modal-backdrop">
                     <div className="se-modal">
+                        {/* Header */}
                         <div className="se-modal-header">
                             <div>
                                 <h2>Add a friend</h2>
-                                <p>Search for people and split bills with them.</p>
+                                <p>Find friends or manage your friend requests.</p>
                             </div>
+
                             <button
                                 type="button"
                                 className="se-modal-close"
@@ -1259,65 +1351,231 @@ export default function Dashboard() {
                                 ×
                             </button>
                         </div>
-                        <div className="friend-search">
-                            <span className="search-icon" aria-hidden="true">
-                                <svg width="20px" height="20px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"> <path d="M16.6725 16.6412L21 21M19 11C19 15.4183 15.4183 19 11 19C6.58172 19 3 15.4183 3 11C3 6.58172 6.58172 3 11 3C15.4183 3 19 6.58172 19 11Z" stroke="#6b7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path> </g></svg>
-                            </span>
-                            <input
-                                type="text"
-                                placeholder="Search by name or username..."
-                                value={searchFriend}
-                                onChange={(e) => setSearchFriend(e.target.value)}
-                                aria-label="Search friends"
-                            />
-                            {searchFriend && (
-                                <button
-                                    className="clear-search"
-                                    onClick={() => setSearchFriend("")}
-                                    aria-label="Clear search"
-                                >
-                                    &times;
-                                </button>
-                            )}
+
+                        {/* Tabs */}
+                        <div className="friend-tabs">
+                            <button
+                                type="button"
+                                className={`friend-tab ${activeFriendTab === "search" ? "active" : ""
+                                    }`}
+                                onClick={() => setActiveFriendTab("search")}
+                            >
+                                Find Friends
+                            </button>
+
+                            <button
+                                type="button"
+                                className={`friend-tab ${activeFriendTab === "requests" ? "active" : ""
+                                    }`}
+                                onClick={() => setActiveFriendTab("requests")}
+                            >
+                                Friend Requests
+                                {friendRequests?.length > 0 && (
+                                    <span className="friend-request-badge">
+                                        {friendRequests.length}
+                                    </span>
+                                )}
+                            </button>
                         </div>
-                        {searchUserLoading && <p>Searching users...</p>}
 
-                        {!searchUserLoading &&
-                            searchFriend.trim() &&
-                            searchUserResults.length === 0 && (
-                                <p>No users found.</p>
-                            )}
+                        {/* Section 1: Find Friends */}
+                        {activeFriendTab === "search" && (
+                            <div className="friend-tab-content">
+                                <div className="friend-search">
+                                    <span className="search-icon" aria-hidden="true">
+                                        <svg
+                                            width="20px"
+                                            height="20px"
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            xmlns="http://www.w3.org/2000/svg"
+                                        >
+                                            <path
+                                                d="M16.6725 16.6412L21 21M19 11C19 15.4183 15.4183 19 11 19C6.58172 19 3 15.4183 3 11C3 6.58172 6.58172 3 11 3C15.4183 3 19 6.58172 19 11Z"
+                                                stroke="#6b7280"
+                                                strokeWidth="2"
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                            />
+                                        </svg>
+                                    </span>
 
+                                    <input
+                                        type="text"
+                                        placeholder="Search by name or username..."
+                                        value={searchFriend}
+                                        onChange={(e) => setSearchFriend(e.target.value)}
+                                        aria-label="Search friends"
+                                    />
 
-                        <div className="search-friend-results">
-                            {searchUserResults.map((user) => (
-                                <div key={user.username} className="search-friend-result">
-                                    <div className="search-friend-avatar" style={{ backgroundColor: getAvatarColor(user.name) }}>
-                                        {(user.name || user.username || "?")
-                                            .charAt(0)
-                                            .toUpperCase()}
-                                    </div>
-
-                                    <div className="search-friend-info">
-                                        <span>{user.username}</span>
-                                        <span>{user.name}</span>
-                                    </div>
-
-                                    <button
-                                        onClick={() => handleAddFriend(user.id)}
-                                        disabled={user.friendship_status === "request_sent"}
-                                    >
-                                        {user.friendship_status === "request_sent"
-                                            ? "Request Sent"
-                                            : `Add Friend`}
-                                    </button>
+                                    {searchFriend && (
+                                        <button
+                                            type="button"
+                                            className="clear-search"
+                                            onClick={() => setSearchFriend("")}
+                                            aria-label="Clear search"
+                                        >
+                                            &times;
+                                        </button>
+                                    )}
                                 </div>
-                            ))}
-                        </div>
 
+                                {searchUserLoading && (
+                                    <p className="friend-status-message">
+                                        Searching users...
+                                    </p>
+                                )}
+
+                                {!searchUserLoading &&
+                                    searchFriend.trim() &&
+                                    searchUserResults.length === 0 && (
+                                        <p className="friend-status-message">
+                                            No users found.
+                                        </p>
+                                    )}
+
+                                {!searchUserLoading &&
+                                    !searchFriend.trim() && (
+                                        <p className="friend-status-message">
+                                            Search for people by name or username.
+                                        </p>
+                                    )}
+
+                                <div className="search-friend-results">
+                                    {searchUserResults.map((user) => (
+                                        <div
+                                            key={user.username}
+                                            className="search-friend-result"
+                                        >
+                                            <div
+                                                className="search-friend-avatar"
+                                                style={{
+                                                    backgroundColor: getAvatarColor(
+                                                        user.name
+                                                    ),
+                                                }}
+                                            >
+                                                {(user.name || user.username || "?")
+                                                    .charAt(0)
+                                                    .toUpperCase()}
+                                            </div>
+
+                                            <div className="search-friend-info">
+                                                <span>{user.username}</span>
+                                                <span>{user.name}</span>
+                                            </div>
+
+                                            {user.friendship_status === "friends" ? (
+                                                <button disabled>Friends ✓</button>
+                                            ) : user.friendship_status === "request_sent" ? (
+                                                <button disabled>Request Sent</button>
+                                            ) : user.friendship_status === "request_received" ? (
+                                                <button onClick={() => setActiveFriendTab("requests")}>Accept Request</button>
+                                            ) : (<button onClick={() => handleAddFriend(user.id)}>
+                                                    Add Friend
+                                                </button>
+                                            )
+                                            }
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Section 2: Friend Requests */}
+                        {activeFriendTab === "requests" && (
+                            <div className="friend-tab-content">
+                                {friendRequestsLoading && (
+                                    <p className="friend-status-message">
+                                        Loading friend requests...
+                                    </p>
+                                )}
+
+                                {friendRequestError && (
+                                    <p className="friend-error-message">
+                                        {friendRequestError}
+                                    </p>
+                                )}
+
+                                {!friendRequestsLoading &&
+                                    !friendRequestError &&
+                                    friendRequests.length === 0 && (
+                                        <p className="friend-status-message">
+                                            You don't have any pending friend requests.
+                                        </p>
+                                    )}
+
+                                <div className="search-friend-results">
+                                    {friendRequests.map((request) =>
+                                    (
+                                        <div
+                                            key={request.id}
+                                            className="search-friend-result"
+                                        >
+                                            <div
+                                                className="search-friend-avatar"
+                                                style={{
+                                                    backgroundColor: getAvatarColor(
+                                                        request.name
+                                                    ),
+                                                }}
+                                            >
+                                                {(request.name || request.username || "?")
+                                                    .charAt(0)
+                                                    .toUpperCase()}
+                                            </div>
+
+                                            <div className="search-friend-info">
+                                                <span>{request.username}</span>
+                                                <span>{request.name}</span>
+                                            </div>
+
+                                            <div className="friend-request-actions">
+                                                {respondingToRequest !== "rejected" && <button
+                                                    type="button"
+                                                    className="accept-request-btn"
+                                                    disabled={
+                                                        respondingToRequest === request.request_id
+                                                    }
+                                                    onClick={() =>
+                                                        handleFriendRequestResponse(
+                                                            request.request_id,
+                                                            "accept"
+                                                        )
+                                                    }
+                                                >
+                                                    {respondingToRequest === request.request_id ? "Please wait..." :
+                                                        respondingToRequest === "accepted" ? "Accepted" :
+                                                            "Accept"}
+                                                </button>}
+
+                                                {respondingToRequest !== "accepted" && <button
+                                                    type="button"
+                                                    className="decline-request-btn"
+                                                    disabled={
+                                                        respondingToRequest === request.request_id
+                                                    }
+                                                    onClick={() =>
+                                                        handleFriendRequestResponse(
+                                                            request.request_id,
+                                                            "reject"
+                                                        )
+                                                    }
+                                                >
+                                                    {respondingToRequest === request.request_id ? "Please wait..." :
+                                                        respondingToRequest === "rejected" ? "Rejected" :
+                                                            "Reject"}
+                                                </button>}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
+            {showNotificationTab && (<Notifications />)}
         </div>
     );
 }

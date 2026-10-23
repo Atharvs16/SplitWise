@@ -8,6 +8,8 @@ router.use(cookieparser());
 
 router.post("/search-add-friend", friendsController.searchAddFriend);
 router.post("/add-friend", friendsController.addFriend);
+router.get("/requests", friendsController.getRequests);
+router.post("/requests/:requestId/:action", friendsController.changeFriendStatus);
 
 module.exports = router;
 

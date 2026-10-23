@@ -1,52 +1,68 @@
 const jwt = require("jsonwebtoken");
 const config = require("../config/config");
 const friendsQueries = require("../queries/friends.queries");
-const sessionQueries = require("../queries/sessions.queries");
-
-async function userLoggedIn( accessToken) {
-    try {
-        const decoded = jwt.verify(accessToken, config.JWT_SECRET);
-        const isrevoked = await sessionQueries.getSessionById(decoded.sessionId, decoded.userId);
-        if (isrevoked.revoked) {
-            throw new Error("Session is revoked");
-        }
-        return decoded;
-    } catch (error) {
-        console.error(error);
-        throw error;
-    }
-}
+const authServices = require("../services/auth.service");
 
 async function searchByUsername(accesstoken, username) {
-    try{
-        const decoded = await userLoggedIn(accesstoken);
-        const result = await friendsQueries.searchByUsername(decoded.userId, username);
+    try {
+        const user = await authServices.getme(accesstoken);
+        const result = await friendsQueries.searchByUsername(user.id, username);
         return result;
     }
-    catch(err){
+    catch (err) {
         console.log(err);
         throw err;
     }
 }
 async function searchByPhone(phone) {
-    try{
+    try {
         const result = await friendsQueries.searchByPhone(phone);
         return result;
     }
-    catch(err){
+    catch (err) {
         console.log(err);
         throw err;
     }
 }
 
 async function addFriend(accesstoken, receiverId) {
+    try {
+        const user = await authServices.getme(accesstoken);
+        const result = await friendsQueries.addFriend(user.id, receiverId);
+        return result;
+    }
+    catch (error) {
+        console.log(error);
+        throw error;
+    }
+}
+
+async function getRequests(accessToken) {
+    try {
+        const user = await authServices.getme(accessToken);
+        if (!user) {
+            return { error: "Invalid user" };
+        }
+        const result = await friendsQueries.getRequests(user.id);
+        return result;
+    }
+    catch (error) {
+        console.error(error);
+        throw error;
+    }
+}
+
+async function changeFriendStatus(accessToken, requestId, action) {
+    const user = await authServices.getme(accessToken);
+    if (!user) {
+        return { error: "Invalid user" };
+    }
     try{
-        const decoded = await userLoggedIn(accesstoken);
-        const result = await friendsQueries.addFriend(decoded.userId, receiverId);
+        const result = await friendsQueries.changeFriendStatus(requestId, user.id, action);
         return result;
     }
     catch(error){
-        console.log(error);
+        console.error(error);
         throw error;
     }
 }
@@ -54,5 +70,7 @@ async function addFriend(accesstoken, receiverId) {
 module.exports = {
     searchByUsername,
     searchByPhone,
-    addFriend
+    addFriend,
+    getRequests,
+    changeFriendStatus
 }

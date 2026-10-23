@@ -1,0 +1,21 @@
+const express = require("express");
+const router = express.Router();
+const cookieparser = require("cookie-parser");
+const notificationsController = require("../controllers/notifications.controller");
+
+router.use(express.json());
+router.use(cookieparser());
+
+router.post("/", notificationsController.getNotifications);
+
+module.exports = router;
+
+router.use((err, req, res, next) => {
+    if (err instanceof SyntaxError && err.status === 400 && "body" in err) {
+        return res.status(400).send({
+            message: "Invalid JSON format"
+        });
+    }
+
+    next(err);
+});

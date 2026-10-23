@@ -1,6 +1,6 @@
 const db = require('../config/db');
 
-async function searchByUsername(id,username) {
+async function searchByUsername(id, username) {
     try {
         const query = `
 SELECT
@@ -34,7 +34,7 @@ ORDER BY u.username
 LIMIT 20;
 `;
 
-        const result = await db.query(query, [id,username]);
+        const result = await db.query(query, [id, username]);
 
         return result.rows;
     }
@@ -64,7 +64,10 @@ async function addFriend(senderId, receiverId) {
         const query = `
             INSERT INTO friends (sender_id, receiver_id, status)
             VALUES ($1::UUID, $2::UUID, 'pending')
-            ON CONFLICT DO NOTHING
+            ON CONFLICT (sender_id, receiver_id)
+            DO UPDATE SET
+                status = 'pending'
+            WHERE friends.status = 'rejected'
             RETURNING *;
         `;
 
@@ -73,7 +76,7 @@ async function addFriend(senderId, receiverId) {
         if (result.rows.length === 0) {
             return {
                 success: false,
-                message: "Friend request already exists."
+                message: "Friend request already exists or cannot be sent."
             };
         }
 
@@ -88,9 +91,69 @@ async function addFriend(senderId, receiverId) {
     }
 }
 
+async function getRequests(userId) {
+    try {
+        const query = `SELECT
+    f.id AS request_id,
+    f.sender_id,
+    u.username,
+    u.name,
+    f.created_at
+FROM friends f
+JOIN users u
+    ON f.sender_id = u.id
+WHERE f.receiver_id = $1
+  AND f.status = 'pending'
+ORDER BY f.created_at DESC;`;
+        const result = db.query(query, [userId]);
+
+        return result;
+    }
+    catch (error) {
+        console.log(error);
+        throw error;
+    }
+}
+
+async function changeFriendStatus(requestId, receiverId, action) {
+
+    if (!["accept", "reject"].includes(action)) {
+        return res.status(400).json({ message: "Invalid action" });
+    }
+
+    const result = await db.query(
+        `UPDATE friends
+SET
+    status = CASE
+        WHEN $1 = 'accept' THEN 'accepted'
+        WHEN $1 = 'reject' THEN 'rejected'
+    END,
+    updated_at = NOW()
+WHERE
+    id = $2
+    AND receiver_id = $3
+    AND status = 'pending'
+RETURNING *;`,
+        [action, requestId, receiverId]
+    );
+
+    if (result.rowCount === 0) {
+        return {
+            message: "Friend request not found or already processed"
+        };
+    }
+
+    return {
+        message: `Friend request ${action}ed successfully`,
+        friendRequest: result.rows[0]
+    };
+}
+
 
 module.exports = {
     searchByPhone,
     searchByUsername,
-    addFriend
+    addFriend,
+    getRequests,
+    changeFriendStatus
 }
