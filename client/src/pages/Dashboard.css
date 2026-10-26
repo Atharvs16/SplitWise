@@ -585,10 +585,22 @@ button:disabled {
 
 .se-expense-row {
   display: flex;
+  width: 100%;
   align-items: center;
   gap: 12px;
-  padding: 14px 0;
+  padding: 14px ;
+  border: 0;
+  border-radius: 10px;
   border-bottom: 1px solid #f0f3f0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  transition: all 0.5s ease;
+}
+.se-expense-row:hover{
+  background-color:#F5F8F5;
+  cursor: pointer;
 }
 
 .se-expense-row:last-child {
@@ -744,9 +756,29 @@ button:disabled {
 
 .se-person {
   display: flex;
+  width: 100%;
   align-items: center;
+  padding: 10px;
   gap: 11px;
+  border: 0;
   min-width: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  transition: all 0.5s ease;
+}
+
+.se-person:hover {
+  background-color: #F5F8F5;
+  cursor: pointer;
+}
+
+.se-person:focus-visible,
+.se-expense-row:focus-visible {
+  outline: 2px solid #4f46e5;
+  outline-offset: 2px;
 }
 
 .se-person-info {
@@ -1069,6 +1101,11 @@ button:disabled {
 
   .se-expense-row {
     gap: 9px;
+  }
+
+  .se-expense-row:hover {
+    background-color: #a4ffa4;
+    cursor: pointer;
   }
 
   .se-expense-icon {

@@ -4,6 +4,7 @@ import { useAuth } from '../AuthContext';
 import "./Dashboard.css";
 import Notifications from "../components/Notifications";
 
+
 const initialExpenses = [
     {
         id: 1,
@@ -69,13 +70,6 @@ const groups = [
         color: "lavender",
         balance: 300,
     },
-];
-
-const people = [
-    { name: "Rohan Sharma", initials: "RS", amount: 1800 },
-    { name: "Priya Mehta", initials: "PM", amount: 1450 },
-    { name: "Ananya Singh", initials: "AS", amount: -800 },
-    { name: "Kabir Verma", initials: "KV", amount: -1000 },
 ];
 
 const menuItems = [
@@ -156,6 +150,15 @@ const formatMoney = (amount) =>
         maximumFractionDigits: 0,
     }).format(Math.abs(amount));
 
+const friendInitials = (name = "") =>
+    name
+        .trim()
+        .split(/\s+/)
+        .slice(0, 2)
+        .map((part) => part[0])
+        .join("")
+        .toUpperCase();
+
 export default function Dashboard() {
     const navigate = useNavigate();
     const { accessToken, authenticatedFetch, setAccessToken } = useAuth();
@@ -198,7 +201,6 @@ export default function Dashboard() {
     const menuRef = useRef(null);
     const buttonRef = useRef(null);
 
-
     useEffect(() => {
         function handleOutsideClick(event) {
             if (
@@ -231,7 +233,6 @@ export default function Dashboard() {
         setIsOpen(false);
     }
 
-
     const [expenses, setExpenses] = useState(initialExpenses);
     const [activeNav, setActiveNav] = useState(activeTab);
     const [showNotificationTab, setShowNotificationTab] = useState(false);
@@ -249,6 +250,9 @@ export default function Dashboard() {
     const [friendRequestsLoading, setFriendRequestsLoading] = useState(false);
     const [respondingToRequest, setRespondingToRequest] = useState(null);
     const [friendRequestError, setFriendRequestError] = useState("");
+    const [people, setPeople] = useState([]);
+    const [loadingFriends, setLoadingFriends] = useState(true);
+    const [friendsError, setFriendsError] = useState("");
     const [notice, setNotice] = useState("");
     const [expenseTitle, setExpenseTitle] = useState("");
     const [expenseAmount, setExpenseAmount] = useState("");
@@ -347,6 +351,38 @@ export default function Dashboard() {
 
         fetchFriendRequests();
     }, [ShowAddFriendForm, activeFriendTab]);
+
+    useEffect(() => {
+        const fetchFriends = async () => {
+            try {
+                const response = await fetch("/api/friends", {
+                    method: "GET",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${accessToken}`,
+                    },
+                    // Add credentials if your authentication uses cookies:
+                    // credentials: "include",
+                });
+
+                if (!response.ok) {
+                    throw new Error("Could not load friends");
+                }
+
+                const data = await response.json();
+                console.log(data)
+                setPeople(data);
+                
+            } catch (error) {
+                setFriendsError(error.message);
+            } finally {
+                setLoadingFriends(false);
+                console.log(people);
+            }
+        };
+
+        fetchFriends();
+    }, []);
 
 
 
@@ -1019,26 +1055,30 @@ export default function Dashboard() {
 
                                 <div className="se-people-grid">
                                     {people.map((person, index) => (
-                                        <div className="se-person" key={person.name}>
+                                        <button
+                                            type="button"
+                                            className="se-person"
+                                            key={person.friend_id}
+                                            onClick={() => navigate(`/friendchat/${encodeURIComponent(person.username)}`)}
+                                            aria-label={`Open expenses with ${person.friend_name}`}
+                                        >
                                             <div
                                                 className={`se-avatar ${index % 2 === 0 ? "avatar-green" : "avatar-peach"
                                                     }`}
                                             >
-                                                {person.initials}
+                                                {friendInitials(person.friend_name)}
                                             </div>
                                             <div className="se-person-info">
-                                                <strong>{person.name}</strong>
-                                                <span>
-                                                    {person.amount > 0 ? "Owes you" : "You owe"}
-                                                </span>
+                                                <strong>{person.friend_name}</strong>
+                                                <span>{person.status}</span>
                                             </div>
                                             <div
-                                                className={`se-person-amount ${person.amount > 0 ? "positive" : "negative"
+                                                className={`se-person-amount ${person.status === "Owes you" ? "positive" : person.status === "You owe" ? "negative" : ""
                                                     }`}
                                             >
                                                 {formatMoney(person.amount)}
                                             </div>
-                                        </div>
+                                        </button>
                                     ))}
                                 </div>
                             </section>
@@ -1136,23 +1176,42 @@ export default function Dashboard() {
                                     </div>
                                 ))}
 
-                            {activeNav === "Friends" &&
-                                people.map((person) => (
-                                    <div className="se-expense-row" key={person.name}>
-                                        <div className="se-avatar avatar-green">
-                                            {person.initials}
-                                        </div>
-                                        <div className="se-expense-info">
-                                            <strong>{person.name}</strong>
-                                            <span>
-                                                {person.amount > 0 ? "Owes you" : "You owe"}
-                                            </span>
-                                        </div>
-                                        <div className="se-expense-amount">
-                                            <strong>{formatMoney(person.amount)}</strong>
-                                        </div>
-                                    </div>
-                                ))}
+                            {activeNav === "Friends" && (
+                                <div>
+                                    {loadingFriends ? (
+                                        <p>Loading friends...</p>
+                                    ) : friendsError ? (
+                                        <p>{friendsError}</p>
+                                    ) : people.length === 0 ? (
+                                        <p>You haven't added any friends yet.</p>
+                                    ) : (
+                                        people.map((person) => (
+                                            <button
+                                                type="button"
+                                                className="se-expense-row"
+                                                key={person.friend_id}
+                                                onClick={() => navigate(`/friendchat/${encodeURIComponent(person.username)}`)}
+                                                aria-label={`Open expenses with ${person.friend_name}`}
+                                            >
+                                                <div className="se-avatar avatar-green">
+                                                    {friendInitials(person.friend_name)}
+                                                </div>
+
+                                                <div className="se-expense-info">
+                                                    <strong>{person.friend_name}</strong>
+                                                    <span>{person.status}</span>
+                                                </div>
+
+                                                <div className="se-expense-amount">
+                                                    <strong>
+                                                        {formatMoney(Math.abs(person.amount))}
+                                                    </strong>
+                                                </div>
+                                            </button>
+                                        ))
+                                    )}
+                                </div>
+                            )}
 
                             {activeNav === "Settlements" && (
                                 settlements.length > 0 ? (
@@ -1472,8 +1531,8 @@ export default function Dashboard() {
                                             ) : user.friendship_status === "request_received" ? (
                                                 <button onClick={() => setActiveFriendTab("requests")}>Accept Request</button>
                                             ) : (<button onClick={() => handleAddFriend(user.id)}>
-                                                    Add Friend
-                                                </button>
+                                                Add Friend
+                                            </button>
                                             )
                                             }
                                         </div>

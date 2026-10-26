@@ -149,11 +149,126 @@ RETURNING *;`,
     };
 }
 
+async function getFriendsWithExpenses(userId) {
+    try{
+        const query = `WITH my_friends AS (
+    SELECT
+        CASE
+            WHEN sender_id = $1::uuid THEN receiver_id
+            ELSE sender_id
+        END AS friend_id
+    FROM friends
+    WHERE (sender_id = $1::uuid OR receiver_id = $1::uuid)
+      AND status = 'accepted'
+),
+
+expense_balances AS (
+    SELECT
+        e.paid_by AS creditor_id,
+        s.user_id AS debtor_id,
+        s.amount
+    FROM expenses e
+    JOIN expense_splits s ON s.expense_id = e.id
+    WHERE e.paid_by <> s.user_id
+      AND e.group_id IS NULL
+),
+
+net_balances AS (
+    SELECT
+        mf.friend_id,
+        COALESCE(SUM(
+            CASE
+                WHEN eb.creditor_id = $1::uuid
+                    AND eb.debtor_id = mf.friend_id
+                    THEN eb.amount
+
+                WHEN eb.creditor_id = mf.friend_id
+                    AND eb.debtor_id = $1::uuid
+                    THEN -eb.amount
+
+                ELSE 0
+            END
+        ), 0) AS net_balance
+    FROM my_friends mf
+    LEFT JOIN expense_balances eb
+        ON (
+            eb.creditor_id = $1::uuid
+            AND eb.debtor_id = mf.friend_id
+        )
+        OR (
+            eb.creditor_id = mf.friend_id
+            AND eb.debtor_id = $1::uuid
+        )
+    GROUP BY mf.friend_id
+),
+
+settlement_balances AS (
+    SELECT
+        mf.friend_id,
+        COALESCE(SUM(
+            CASE
+                WHEN st.paid_by = $1::uuid
+                    AND st.paid_to = mf.friend_id
+                    THEN st.amount
+
+                WHEN st.paid_by = mf.friend_id
+                    AND st.paid_to = $1::uuid
+                    THEN -st.amount
+
+                ELSE 0
+            END
+        ), 0) AS settlement_adjustment
+    FROM my_friends mf
+    LEFT JOIN settlements st
+        ON (
+            (
+                st.paid_by = $1::uuid
+                AND st.paid_to = mf.friend_id
+            )
+            OR (
+                st.paid_by = mf.friend_id
+                AND st.paid_to = $1::uuid
+            )
+        )
+        AND st.group_id IS NULL
+        AND st.status = 'accepted'
+    GROUP BY mf.friend_id
+)
+
+SELECT
+    u.id AS friend_id,
+    u.name AS friend_name,
+    u.username,
+    CASE
+        WHEN nb.net_balance + sb.settlement_adjustment > 0
+            THEN 'Owes you'
+        WHEN nb.net_balance + sb.settlement_adjustment < 0
+            THEN 'You owe'
+        ELSE 'Settled'
+    END AS status,
+    ABS(nb.net_balance + sb.settlement_adjustment) AS amount
+FROM net_balances nb
+JOIN users u ON u.id = nb.friend_id
+JOIN settlement_balances sb ON sb.friend_id = nb.friend_id
+ORDER BY amount DESC;`
+
+        const result = await db.query(query, [userId]);
+
+        return result.rows;
+    }
+
+    catch(error){
+        console.log(error);
+        throw error;
+    }
+}
+
 
 module.exports = {
     searchByPhone,
     searchByUsername,
     addFriend,
     getRequests,
-    changeFriendStatus
+    changeFriendStatus,
+    getFriendsWithExpenses
 }

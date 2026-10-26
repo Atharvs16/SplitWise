@@ -50,7 +50,7 @@ export default function LandingNavbar() {
           {/* Mobile CTA */}
           <div className="landing-mobile-actions">
             <a
-              href="/login"
+              href="/workspace"
               className="landing-login-btn"
               onClick={closeMenu}
             >
@@ -58,7 +58,7 @@ export default function LandingNavbar() {
             </a>
 
             <a
-              href="/Auth"
+              href='/Auth?mode=signup'
               className="landing-cta-btn"
               onClick={closeMenu}
             >
@@ -70,11 +70,11 @@ export default function LandingNavbar() {
 
         {/* Desktop Actions */}
         <div className="landing-nav-actions">
-          <a href="/Auth?mode=signin" className="landing-login-btn">
+          <a href="/workspace" className="landing-login-btn">
             Log in
           </a>
 
-          <a href="/Auth" className="landing-cta-btn">
+          <a href="/Auth?mode=signup" className="landing-cta-btn">
             Get started
             <ArrowUpRight size={17} />
           </a>

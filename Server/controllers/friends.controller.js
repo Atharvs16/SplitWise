@@ -65,9 +65,22 @@ async function changeFriendStatus(req, res) {
     }
 }
 
+async function getFriendsWithExpense(req, res) {
+    const accessToken = req.headers.authorization?.split(" ")[1];
+    try{
+        const result = await friendsServices.getFriendsWithExpense(accessToken);
+        res.status(200).json(result);
+    }
+    catch(error){
+        console.log(error);
+        throw error;
+    }
+}
+
 module.exports = {
     searchAddFriend,
     addFriend,
     getRequests,
-    changeFriendStatus
+    changeFriendStatus,
+    getFriendsWithExpense
 };

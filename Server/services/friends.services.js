@@ -14,6 +14,7 @@ async function searchByUsername(accesstoken, username) {
         throw err;
     }
 }
+
 async function searchByPhone(phone) {
     try {
         const result = await friendsQueries.searchByPhone(phone);
@@ -67,10 +68,27 @@ async function changeFriendStatus(accessToken, requestId, action) {
     }
 }
 
+async function getFriendsWithExpense(accessToken) {
+    const user = await authServices.getme(accessToken);
+    if (!user) {
+        return { error: "Invalid user" };
+    }
+
+    try{
+        const result = await friendsQueries.getFriendsWithExpenses(user.id);
+        return result;
+    }
+    catch(error){
+        console.log(error);
+        throw error;
+    }
+}
+
 module.exports = {
     searchByUsername,
     searchByPhone,
     addFriend,
     getRequests,
-    changeFriendStatus
+    changeFriendStatus,
+    getFriendsWithExpense
 }

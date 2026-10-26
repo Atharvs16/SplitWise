@@ -49,7 +49,7 @@ function Auth() {
   const { login: fetchtoken } = useAuth();
   const [searchParams] = useSearchParams();
   const [mode, setMode] = useState(
-    searchParams.get("mode") === "signin" ? "signin" : "signup"
+    searchParams.get("mode") === "signup" ? "signup" : "signin"
   );
   const [loginMethod, setLoginMethod] = useState("password");
   const [showPassword, setShowPassword] = useState(false);

@@ -2,10 +2,11 @@ import './App.css'
 import LandingPage from "./pages/LandingPage";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard"
-import { createBrowserRouter, RouterProvider, BrowserRouter, Routes, Route } from 'react-router-dom';
+import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import { AuthProvider } from './AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import NotFound from './pages/NotFound'
+import FriendChat from "./pages/FriendChat";
 
 const router = createBrowserRouter([
   {
@@ -23,6 +24,14 @@ const router = createBrowserRouter([
         path: "/workspace",
         element: <Dashboard />,
       },
+      {
+        path:"/friendchat",
+        element: <FriendChat />,
+      },
+      {
+        path:"/friendchat/:username",
+        element: <FriendChat />,
+      }
     ],
   },
   {
