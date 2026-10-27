@@ -913,6 +913,79 @@ button:disabled {
   box-shadow: 0 0 0 3px #16865c12;
 }
 
+.se-group-friends {
+  min-width: 0;
+  padding: 0;
+  margin: 0 0 16px;
+  border: 0;
+}
+
+.se-group-friends legend {
+  margin-bottom: 10px;
+  color: #46574b;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.se-group-friend-list {
+  display: grid;
+  max-height: 210px;
+  overflow-y: auto;
+  border: 1px solid #e6ece7;
+  border-radius: 9px;
+}
+
+.se-group-friend {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 58px;
+  padding: 8px 11px;
+  border-bottom: 1px solid #f0f3f0;
+  cursor: pointer;
+}
+
+.se-group-friend:last-child {
+  border-bottom: 0;
+}
+
+.se-group-friend input {
+  accent-color: var(--green);
+}
+
+.se-group-friend .se-avatar {
+  flex: 0 0 34px;
+  width: 34px;
+  height: 34px;
+  font-size: 10px;
+}
+
+.se-group-friend-info {
+  display: grid;
+  gap: 4px;
+}
+
+.se-group-friend-info strong {
+  color: #35433a;
+  font-size: 11px;
+}
+
+.se-group-friend-info span,
+.group-friends-message {
+  color: #89968d;
+  font-size: 10px;
+}
+
+.group-friends-message {
+  margin: 0;
+}
+
+.se-form-error {
+  margin: 0 0 12px;
+  color: #b42318;
+  font-size: 11px;
+}
+
 .se-submit {
   width: 100%;
   margin-top: 7px;

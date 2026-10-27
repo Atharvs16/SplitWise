@@ -28,7 +28,12 @@ async function getGroups(accessToken) {
 async function createGroup(data) {
     const { token, groupData } = data;
     const user = await getUser(token);
-    return groupQueries.createGroup(groupData.name, groupData.description, user.id);
+    return groupQueries.createGroup(
+        groupData.name,
+        groupData.description,
+        user.id,
+        groupData.memberIds
+    );
 }
 
 async function getGroupOverview(accessToken, groupId) {

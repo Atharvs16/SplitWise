@@ -9,7 +9,14 @@ const createGroupSchema = z.object({
     description: z
         .string()
         .trim()
-        .max(200, "Group description must be at most 200 characters")
+        .max(200, "Group description must be at most 200 characters"),
+    memberIds: z
+        .array(z.string().uuid())
+        .max(50, "A group can include at most 50 friends")
+        .optional()
+        .refine(memberIds => !memberIds || new Set(memberIds).size === memberIds.length, {
+            message: "Each friend can only be added once"
+        })
 });
 
 function validateCreateGroup(req, res, next) {

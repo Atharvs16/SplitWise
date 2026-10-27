@@ -48,30 +48,6 @@ const initialExpenses = [
     },
 ];
 
-const groups = [
-    {
-        name: "Flatmates",
-        subtitle: "4 members",
-        icon: "🏠",
-        color: "mint",
-        balance: 1250,
-    },
-    {
-        name: "Goa Trip",
-        subtitle: "5 members",
-        icon: "🏖️",
-        color: "peach",
-        balance: 900,
-    },
-    {
-        name: "Office Lunch",
-        subtitle: "3 members",
-        icon: "🍜",
-        color: "lavender",
-        balance: 300,
-    },
-];
-
 const menuItems = [
     {
         label: "My Profile",
@@ -234,6 +210,9 @@ export default function Dashboard() {
     }
 
     const [expenses, setExpenses] = useState(initialExpenses);
+    const [groups, setGroups] = useState([]);
+    const [loadingGroups, setLoadingGroups] = useState(true);
+    const [groupsError, setGroupsError] = useState("");
     const [activeNav, setActiveNav] = useState(activeTab);
     const [showNotificationTab, setShowNotificationTab] = useState(false);
     const [showExpenseForm, setShowExpenseForm] = useState(false);
@@ -257,6 +236,11 @@ export default function Dashboard() {
     const [expenseTitle, setExpenseTitle] = useState("");
     const [expenseAmount, setExpenseAmount] = useState("");
     const [expenseGroup, setExpenseGroup] = useState("Flatmates");
+    const [groupName, setGroupName] = useState("");
+    const [groupDescription, setGroupDescription] = useState("");
+    const [selectedGroupFriendIds, setSelectedGroupFriendIds] = useState([]);
+    const [creatingGroup, setCreatingGroup] = useState(false);
+    const [groupCreationError, setGroupCreationError] = useState("");
     const [paidBy, setPaidBy] = useState("You");
     const [settledPerson, setSettledPerson] = useState("Rohan Sharma");
     const [settledAmount, setSettledAmount] = useState("");
@@ -353,36 +337,72 @@ export default function Dashboard() {
     }, [ShowAddFriendForm, activeFriendTab]);
 
     useEffect(() => {
+        if (!accessToken) return;
+
+        let cancelled = false;
+        const fetchGroups = async () => {
+            try {
+                setLoadingGroups(true);
+                setGroupsError("");
+                const response = await authenticatedFetch("/api/groups");
+                const result = await response.json();
+                if (!response.ok) {
+                    throw new Error(result.error || "Could not load groups.");
+                }
+                if (!Array.isArray(result.groups)) {
+                    throw new Error("The groups response was not a list.");
+                }
+                if (!cancelled) setGroups(result.groups);
+            } catch (error) {
+                if (!cancelled) {
+                    console.error("Failed to load groups:", error);
+                    setGroupsError(error.message || "Could not load groups.");
+                }
+            } finally {
+                if (!cancelled) setLoadingGroups(false);
+            }
+        };
+
+        fetchGroups();
+        return () => {
+            cancelled = true;
+        };
+    }, [accessToken, authenticatedFetch]);
+
+    useEffect(() => {
+        if (!accessToken) return;
+
+        let cancelled = false;
         const fetchFriends = async () => {
             try {
-                const response = await fetch("/api/friends", {
-                    method: "GET",
-                    headers: {
-                        "Content-Type": "application/json",
-                        "Authorization": `Bearer ${accessToken}`,
-                    },
-                    // Add credentials if your authentication uses cookies:
-                    // credentials: "include",
-                });
+                setLoadingFriends(true);
+                setFriendsError("");
+                const response = await authenticatedFetch("/api/friends");
+                const data = await response.json();
 
                 if (!response.ok) {
-                    throw new Error("Could not load friends");
+                    throw new Error(data.error || "Could not load friends.");
+                }
+                if (!Array.isArray(data)) {
+                    throw new Error("The friends response was not a list.");
                 }
 
-                const data = await response.json();
-                console.log(data)
-                setPeople(data);
-                
+                if (!cancelled) setPeople(data);
             } catch (error) {
-                setFriendsError(error.message);
+                if (!cancelled) {
+                    console.error("Failed to load friends:", error);
+                    setFriendsError(error.message || "Could not load friends.");
+                }
             } finally {
-                setLoadingFriends(false);
-                console.log(people);
+                if (!cancelled) setLoadingFriends(false);
             }
         };
 
         fetchFriends();
-    }, []);
+        return () => {
+            cancelled = true;
+        };
+    }, [accessToken, authenticatedFetch]);
 
 
 
@@ -629,6 +649,62 @@ export default function Dashboard() {
             `Demo settlement recorded for ${settledPerson}.`
         );
     }
+
+    async function createGroup(event) {
+        event.preventDefault();
+        setGroupCreationError("");
+        setCreatingGroup(true);
+
+        try {
+            const response = await authenticatedFetch("/api/groups/create", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    name: groupName.trim(),
+                    description: groupDescription.trim(),
+                    memberIds: selectedGroupFriendIds,
+                }),
+            });
+            const result = await response.json();
+            if (!response.ok) {
+                throw new Error(result.error || "Could not create group.");
+            }
+            if (!result.group?.id) {
+                throw new Error("The group was created but the response was invalid.");
+            }
+
+            const createdGroup = {
+                ...result.group,
+                member_count: selectedGroupFriendIds.length + 1,
+                net_balance: result.group.net_balance ?? 0,
+            };
+            setGroups((currentGroups) => [createdGroup, ...currentGroups]);
+            setShowAddGroupForm(false);
+            setGroupName("");
+            setGroupDescription("");
+            setSelectedGroupFriendIds([]);
+            setNotice(
+                `“${createdGroup.name}” created with ${selectedGroupFriendIds.length} friend${selectedGroupFriendIds.length === 1 ? "" : "s"}.`
+            );
+        } catch (error) {
+            console.error("Failed to create group:", error);
+            setGroupCreationError(error.message || "Could not create group.");
+        } finally {
+            setCreatingGroup(false);
+        }
+    }
+
+    function toggleGroupFriend(friendId) {
+        setSelectedGroupFriendIds((selectedIds) =>
+            selectedIds.includes(friendId)
+                ? selectedIds.filter((id) => id !== friendId)
+                : [...selectedIds, friendId]
+        );
+    }
+
+    const groupColors = ["mint", "peach", "lavender", "yellow"];
+    const getGroupBalance = (group) => Number(group.net_balance) || 0;
+    const getGroupMemberCount = (group) => Number(group.member_count) || 0;
 
     const navItems = [
         { label: "Dashboard", icon: "⌂" },
@@ -988,39 +1064,46 @@ export default function Dashboard() {
                                         <button
                                             className="se-icon-button"
                                             aria-label="Add group"
-                                            onClick={() =>
-                                                setNotice("Group creation coming soon.")
-                                            }
+                                            onClick={() => {
+                                                setGroupCreationError("");
+                                                setShowAddGroupForm(true);
+                                            }}
                                         >
                                             ＋
                                         </button>
                                     </div>
 
                                     <div className="se-groups-list">
-                                        {groups.map((group) => (
+                                        {loadingGroups ? (
+                                            <div className="se-empty">Loading groups...</div>
+                                        ) : groupsError ? (
+                                            <div className="se-empty" role="alert">{groupsError}</div>
+                                        ) : groups.length === 0 ? (
+                                            <div className="se-empty">You haven't created any groups yet.</div>
+                                        ) : groups.slice(0, 4).map((group, index) => (
                                             <button
                                                 className="se-group-row"
-                                                key={group.name}
+                                                key={group.id}
                                                 onClick={() => {
-                                                    setSearch(group.name);
-                                                    setActiveNav("Activity");
+                                                    setActiveNav("Groups");
+                                                    handleTabChange("Groups");
                                                 }}
                                             >
                                                 <span
-                                                    className={`se-group-icon ${group.color}`}
+                                                    className={`se-group-icon ${groupColors[index % groupColors.length]}`}
                                                 >
-                                                    {group.icon}
+                                                    👥
                                                 </span>
                                                 <span className="se-group-info">
                                                     <strong>{group.name}</strong>
-                                                    <span>{group.subtitle}</span>
+                                                    <span>{getGroupMemberCount(group)} members</span>
                                                 </span>
                                                 <span className="se-group-balance">
                                                     <strong>
-                                                        {group.balance >= 0 ? "+" : "-"}
-                                                        {formatMoney(group.balance)}
+                                                        {getGroupBalance(group) >= 0 ? "+" : "-"}
+                                                        {formatMoney(getGroupBalance(group))}
                                                     </strong>
-                                                    <span>your balance</span>
+                                                    <span>Your balance</span>
                                                 </span>
                                             </button>
                                         ))}
@@ -1159,22 +1242,34 @@ export default function Dashboard() {
                                 </>
                             )}
 
-                            {activeNav === "Groups" &&
-                                groups.map((group) => (
-                                    <div className="se-expense-row" key={group.name}>
-                                        <div className={`se-expense-icon ${group.color}`}>
-                                            {group.icon}
+                            {activeNav === "Groups" && (
+                                loadingGroups ? (
+                                    <div className="se-empty">Loading groups...</div>
+                                ) : groupsError ? (
+                                    <div className="se-empty" role="alert">{groupsError}</div>
+                                ) : groups.length === 0 ? (
+                                    <div className="se-empty">You haven't created any groups yet. Create one to get started.</div>
+                                ) : (
+                                    groups.map((group, index) => (
+                                        <div className="se-expense-row" key={group.id}>
+                                            <div className={`se-expense-icon ${groupColors[index % groupColors.length]}`}>
+                                                👥
+                                            </div>
+                                            <div className="se-expense-info">
+                                                <strong>{group.name}</strong>
+                                                <span>{getGroupMemberCount(group)} members</span>
+                                            </div>
+                                            <div className="se-expense-amount">
+                                                <strong>
+                                                    {getGroupBalance(group) >= 0 ? "+" : "-"}
+                                                    {formatMoney(getGroupBalance(group))}
+                                                </strong>
+                                                <span>Your balance</span>
+                                            </div>
                                         </div>
-                                        <div className="se-expense-info">
-                                            <strong>{group.name}</strong>
-                                            <span>{group.subtitle}</span>
-                                        </div>
-                                        <div className="se-expense-amount">
-                                            <strong>{formatMoney(group.balance)}</strong>
-                                            <span>Your balance</span>
-                                        </div>
-                                    </div>
-                                ))}
+                                    ))
+                                )
+                            )}
 
                             {activeNav === "Friends" && (
                                 <div>
@@ -1391,6 +1486,104 @@ export default function Dashboard() {
                     </form>
                 </div>
             )}
+            {ShowAddGroupForm && (
+                <div
+                    className="se-modal-backdrop"
+                    onMouseDown={(event) => {
+                        if (event.target === event.currentTarget && !creatingGroup) {
+                            setShowAddGroupForm(false);
+                        }
+                    }}
+                >
+                    <form className="se-modal" onSubmit={createGroup}>
+                        <div className="se-modal-header">
+                            <div>
+                                <h2>Create a group</h2>
+                                <p>Add a name and choose friends to include.</p>
+                            </div>
+                            <button
+                                type="button"
+                                className="se-modal-close"
+                                onClick={() => setShowAddGroupForm(false)}
+                                disabled={creatingGroup}
+                                aria-label="Close"
+                            >
+                                ×
+                            </button>
+                        </div>
+
+                        <label className="se-field">
+                            Group name
+                            <input
+                                required
+                                autoFocus
+                                minLength="2"
+                                maxLength="50"
+                                value={groupName}
+                                onChange={(event) => setGroupName(event.target.value)}
+                                placeholder="e.g. Flatmates, Goa trip"
+                            />
+                        </label>
+
+                        <label className="se-field">
+                            Description (optional)
+                            <input
+                                maxLength="200"
+                                value={groupDescription}
+                                onChange={(event) => setGroupDescription(event.target.value)}
+                                placeholder="What is this group for?"
+                            />
+                        </label>
+
+                        <fieldset className="se-group-friends">
+                            <legend>
+                                Add friends
+                                {selectedGroupFriendIds.length > 0 &&
+                                    ` (${selectedGroupFriendIds.length} selected)`}
+                            </legend>
+                            {loadingFriends ? (
+                                <p className="group-friends-message">Loading friends...</p>
+                            ) : friendsError ? (
+                                <p className="group-friends-message" role="alert">{friendsError}</p>
+                            ) : people.length === 0 ? (
+                                <p className="group-friends-message">You don't have any friends to add yet.</p>
+                            ) : (
+                                <div className="se-group-friend-list">
+                                    {people.map((friend) => (
+                                        <label className="se-group-friend" key={friend.friend_id}>
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedGroupFriendIds.includes(friend.friend_id)}
+                                                onChange={() => toggleGroupFriend(friend.friend_id)}
+                                            />
+                                            <span className="se-avatar avatar-green">
+                                                {friendInitials(friend.friend_name)}
+                                            </span>
+                                            <span className="se-group-friend-info">
+                                                <strong>{friend.friend_name}</strong>
+                                                <span>@{friend.username}</span>
+                                            </span>
+                                        </label>
+                                    ))}
+                                </div>
+                            )}
+                        </fieldset>
+
+                        {groupCreationError && (
+                            <p className="se-form-error" role="alert">{groupCreationError}</p>
+                        )}
+
+                        <button
+                            className="se-btn se-btn-primary se-submit"
+                            type="submit"
+                            disabled={creatingGroup}
+                        >
+                            {creatingGroup ? "Creating group..." : "Create group"}
+                        </button>
+                    </form>
+                </div>
+            )}
+
             {ShowAddFriendForm && (
                 <div className="se-modal-backdrop">
                     <div className="se-modal">

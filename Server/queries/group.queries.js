@@ -16,10 +16,35 @@ async function addmemberToGroup(group_id, user_id) {
     }
 }
 
-async function createGroup(name, description, created_by) {
+async function createGroup(name, description, created_by, memberIds = []) {
     const client = await db.connect();
     try {
         await client.query('BEGIN');
+        const uniqueMemberIds = [...new Set(memberIds)];
+        if (uniqueMemberIds.length > 0) {
+            const friendsResult = await client.query(
+                `SELECT CASE
+                            WHEN sender_id = $1::uuid THEN receiver_id
+                            ELSE sender_id
+                        END AS friend_id
+                 FROM friends
+                 WHERE status = 'accepted'
+                   AND (
+                       (sender_id = $1::uuid AND receiver_id = ANY($2::uuid[]))
+                       OR (receiver_id = $1::uuid AND sender_id = ANY($2::uuid[]))
+                   )`,
+                [created_by, uniqueMemberIds]
+            );
+            const acceptedFriendIds = new Set(
+                friendsResult.rows.map(({ friend_id }) => friend_id)
+            );
+            if (uniqueMemberIds.some(memberId => !acceptedFriendIds.has(memberId))) {
+                const error = new Error("Groups can only include your accepted friends.");
+                error.statusCode = 400;
+                throw error;
+            }
+        }
+
         const query = `
             INSERT INTO groups (name, description, created_by)
             VALUES ($1, $2, $3)
@@ -29,11 +54,13 @@ async function createGroup(name, description, created_by) {
         const result = await client.query(query, values);
         const group =  result.rows[0];
 
-        await client.query(
-            `INSERT INTO group_members (group_id, user_id)
-             VALUES ($1::uuid, $2::uuid)`,
-            [group.id, created_by]
-        );
+        for (const userId of [created_by, ...uniqueMemberIds]) {
+            await client.query(
+                `INSERT INTO group_members (group_id, user_id)
+                 VALUES ($1::uuid, $2::uuid)`,
+                [group.id, userId]
+            );
+        }
 
         await client.query('COMMIT');
         return group;
@@ -55,6 +82,8 @@ async function getGroupsByUserId(user_id) {
                 g.name,
                 g.description,
                 g.created_by,
+                (SELECT COUNT(*) FROM group_members group_member_count
+                 WHERE group_member_count.group_id = g.id) AS member_count,
                 COALESCE((
                     SELECT SUM(
                         CASE
@@ -81,6 +110,7 @@ async function getGroupsByUserId(user_id) {
             FROM groups g
             JOIN group_members gm ON g.id = gm.group_id
             WHERE gm.user_id = $1
+            ORDER BY g.created_at DESC
         `;
         const values = [user_id];
         const result = await db.query(query, values);

@@ -16,11 +16,11 @@ function respondWithError(res, error, genericMessage) {
 }
 
 async function createGroup(req, res) {
-    const { name, description } = req.body;
+    const { name, description, memberIds = [] } = req.body;
     try {
         const group = await groupservice.createGroup({
             token: accessToken(req),
-            groupData: { name, description }
+            groupData: { name, description, memberIds }
         });
         return res.status(201).json({ group });
     } catch (error) {
