@@ -5,6 +5,8 @@ import {
   Menu,
   X,
   ArrowUpRight,
+  Strikethrough,
+  Underline,
 } from "lucide-react";
 import "./LandingNavbar.css";
 
@@ -25,7 +27,7 @@ export default function LandingNavbar() {
             <img src="/favicon.svg" alt="" width="40" height="40" />
           </span>
 
-          <span className="landing-brand-name">
+          <span className="landing-brand-name" >
             Split<span>Ease</span>
           </span>
         </a>
