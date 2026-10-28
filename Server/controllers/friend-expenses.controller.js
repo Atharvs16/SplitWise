@@ -103,6 +103,15 @@ async function listSettlementRequests(req, res) {
     }
 }
 
+async function listSettlements(req, res) {
+    try {
+        const settlements = await friendExpensesService.listSettlements(accessToken(req));
+        return res.status(200).json({ settlements });
+    } catch (error) {
+        return respondWithError(res, error);
+    }
+}
+
 async function acceptSettlementRequest(req, res) {
     try {
         const settlement = await friendExpensesService.acceptSettlementRequest(
@@ -134,6 +143,7 @@ module.exports = {
     recordSettlement,
     requestSettlement,
     listSettlementRequests,
+    listSettlements,
     acceptSettlementRequest,
     cancelSettlementRequest
 };

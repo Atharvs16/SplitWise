@@ -13,6 +13,7 @@ router.post("/add-friend", friendsController.addFriend);
 router.get("/requests", friendsController.getRequests);
 router.post("/requests/:requestId/:action", friendsController.changeFriendStatus);
 router.get("/", friendsController.getFriendsWithExpense);
+router.get("/settlements", friendExpensesController.listSettlements);
 router.get("/settlement-requests", friendExpensesController.listSettlementRequests);
 router.post(
     "/settlement-requests/:requestId/accept",

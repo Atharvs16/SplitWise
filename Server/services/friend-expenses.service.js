@@ -49,6 +49,11 @@ async function listSettlementRequests(accessToken, direction, status) {
     return expenseQueries.listSettlementRequests(userId, direction, status);
 }
 
+async function listSettlements(accessToken) {
+    const userId = await getUserId(accessToken);
+    return expenseQueries.listSettlements(userId);
+}
+
 async function acceptSettlementRequest(accessToken, requestId) {
     const userId = await getUserId(accessToken);
     return expenseQueries.acceptSettlementRequest(userId, requestId);
@@ -66,6 +71,7 @@ module.exports = {
     recordSettlement,
     requestSettlement,
     listSettlementRequests,
+    listSettlements,
     acceptSettlementRequest,
     cancelSettlementRequest
 };

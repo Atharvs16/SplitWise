@@ -317,6 +317,41 @@ async function listSettlementRequests(userId, direction, status) {
     return result.rows;
 }
 
+async function listSettlements(userId) {
+    const result = await db.query(
+        `SELECT
+             st.id,
+             st.expense_id,
+             st.paid_by,
+             payer.name AS payer_name,
+             st.paid_to,
+             recipient.name AS recipient_name,
+             CASE
+                 WHEN st.paid_by = $1::uuid THEN recipient.name
+                 ELSE payer.name
+             END AS friend_name,
+             CASE
+                 WHEN st.paid_by = $1::uuid THEN 'paid'
+                 ELSE 'received'
+             END AS direction,
+             e.description AS expense_description,
+             st.amount::text AS amount,
+             st.status,
+             st.created_at
+         FROM settlements st
+         JOIN expenses e ON e.id = st.expense_id
+         JOIN users payer ON payer.id = st.paid_by
+         JOIN users recipient ON recipient.id = st.paid_to
+         WHERE st.group_id IS NULL
+           AND e.group_id IS NULL
+           AND (st.paid_by = $1::uuid OR st.paid_to = $1::uuid)
+         ORDER BY st.created_at DESC
+         LIMIT 25`,
+        [userId]
+    );
+    return result.rows;
+}
+
 async function acceptSettlementRequest(userId, requestId) {
     return withTransaction(async client => {
         const requestResult = await client.query(
@@ -393,6 +428,7 @@ module.exports = {
     recordSettlement,
     requestSettlement,
     listSettlementRequests,
+    listSettlements,
     acceptSettlementRequest,
     cancelSettlementRequest
 };

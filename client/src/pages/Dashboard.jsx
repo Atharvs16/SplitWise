@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useAuth } from '../AuthContext';
 import "./Dashboard.css";
+import "./Settlements.css";
 import Notifications from "../components/Notifications";
 
 
@@ -135,6 +136,19 @@ const friendInitials = (name = "") =>
         .join("")
         .toUpperCase();
 
+const formatSettlementDate = (value) => {
+    const date = new Date(value);
+    return Number.isNaN(date.getTime())
+        ? "Date unavailable"
+        : date.toLocaleString("en-IN", {
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+            hour: "numeric",
+            minute: "2-digit",
+        });
+};
+
 export default function Dashboard() {
     const navigate = useNavigate();
     const { accessToken, authenticatedFetch, setAccessToken } = useAuth();
@@ -216,7 +230,6 @@ export default function Dashboard() {
     const [activeNav, setActiveNav] = useState(activeTab);
     const [showNotificationTab, setShowNotificationTab] = useState(false);
     const [showExpenseForm, setShowExpenseForm] = useState(false);
-    const [showSettleForm, setShowSettleForm] = useState(false);
     const [ShowAddGroupForm, setShowAddGroupForm] = useState(false);
     const [ShowAddFriendForm, setShowAddFriendForm] = useState(false);
     const [searchUserResults, setSearchUserResults] = useState([]);
@@ -230,6 +243,10 @@ export default function Dashboard() {
     const [respondingToRequest, setRespondingToRequest] = useState(null);
     const [friendRequestError, setFriendRequestError] = useState("");
     const [people, setPeople] = useState([]);
+    const [settlements, setSettlements] = useState([]);
+    const [settlementsLoading, setSettlementsLoading] = useState(activeTab === "Settlements");
+    const [settlementsError, setSettlementsError] = useState("");
+    const [settlementsRefresh, setSettlementsRefresh] = useState(0);
     const [loadingFriends, setLoadingFriends] = useState(true);
     const [friendsError, setFriendsError] = useState("");
     const [notice, setNotice] = useState("");
@@ -242,9 +259,6 @@ export default function Dashboard() {
     const [creatingGroup, setCreatingGroup] = useState(false);
     const [groupCreationError, setGroupCreationError] = useState("");
     const [paidBy, setPaidBy] = useState("You");
-    const [settledPerson, setSettledPerson] = useState("Rohan Sharma");
-    const [settledAmount, setSettledAmount] = useState("");
-    const [settlements, setSettlements] = useState([]);
     const [confirmLogout, setConfirmLogout] = useState(false)
     const [greeting, setGreeting] = useState('');
 
@@ -404,7 +418,36 @@ export default function Dashboard() {
         };
     }, [accessToken, authenticatedFetch]);
 
+    useEffect(() => {
+        if (!accessToken || activeNav !== "Settlements") return;
 
+        let cancelled = false;
+        const fetchSettlements = async () => {
+            try {
+                setSettlementsError("");
+                const response = await authenticatedFetch("/api/friends/settlements");
+                const result = await response.json();
+                if (!response.ok) {
+                    throw new Error(result.error || "Could not load settlements.");
+                }
+                if (!Array.isArray(result.settlements)) {
+                    throw new Error("The settlements response was not a list.");
+                }
+                if (!cancelled) setSettlements(result.settlements);
+            } catch (error) {
+                if (!cancelled) {
+                    setSettlementsError(error.message || "Could not load settlements.");
+                }
+            } finally {
+                if (!cancelled) setSettlementsLoading(false);
+            }
+        };
+
+        void fetchSettlements();
+        return () => {
+            cancelled = true;
+        };
+    }, [accessToken, activeNav, authenticatedFetch, settlementsRefresh]);
 
     const avatarColors = [
         "#FCA5A5",
@@ -627,29 +670,6 @@ export default function Dashboard() {
         setNotice("Expense added to this demo dashboard.");
     }
 
-    function recordSettlement(event) {
-        event.preventDefault();
-
-        const amount = Number(settledAmount);
-        if (!Number.isFinite(amount) || amount <= 0) return;
-
-        setSettlements((current) => [
-            {
-                id: Date.now(),
-                person: settledPerson,
-                amount,
-                date: "Just now",
-            },
-            ...current,
-        ]);
-
-        setSettledAmount("");
-        setShowSettleForm(false);
-        setNotice(
-            `Demo settlement recorded for ${settledPerson}.`
-        );
-    }
-
     async function createGroup(event) {
         event.preventDefault();
         setGroupCreationError("");
@@ -748,6 +768,9 @@ export default function Dashboard() {
                                 }`}
                             onClick={() => {
                                 setActiveNav(item.label);
+                                if (item.label === "Settlements") {
+                                    setSettlementsLoading(true);
+                                }
                                 handleTabChange(item.label)
                                 setNotice("");
                             }}
@@ -916,7 +939,11 @@ export default function Dashboard() {
                         <div className="se-actions">
                             <button
                                 className="se-btn se-btn-secondary"
-                                onClick={() => setShowSettleForm(true)}
+                                onClick={() => {
+                                    setActiveNav("Settlements");
+                                    setSettlementsLoading(true);
+                                    handleTabChange("Settlements");
+                                }}
                             >
                                 ↔ Settle up
                             </button>
@@ -1163,28 +1190,6 @@ export default function Dashboard() {
                                 </div>
                             </section>
 
-                            {settlements.length > 0 && (
-                                <section className="se-panel se-people-panel">
-                                    <div className="se-panel-header">
-                                        <div>
-                                            <h3>Recent settlements</h3>
-                                            <p>Settlements recorded in this demo</p>
-                                        </div>
-                                    </div>
-                                    {settlements.map((settlement) => (
-                                        <div className="se-expense-row" key={settlement.id}>
-                                            <div className="se-expense-icon mint">✓</div>
-                                            <div className="se-expense-info">
-                                                <strong>{settlement.person}</strong>
-                                                <span>Settlement recorded · {settlement.date}</span>
-                                            </div>
-                                            <div className="se-expense-amount">
-                                                <strong>{formatMoney(settlement.amount)}</strong>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </section>
-                            )}
                         </>
                     ) : (
                         <section className="se-panel se-section-panel">
@@ -1198,7 +1203,7 @@ export default function Dashboard() {
                                                 ? "Explore expenses shared with your groups."
                                                 : activeNav === "Friends"
                                                     ? "See your balances with friends."
-                                                    : "Review settlements recorded in this demo."}
+                                                    : "Review recent settlements and outstanding friend balances."}
                                     </p>
                                 </div>
                                 {activeNav === "Activity" && (
@@ -1311,36 +1316,130 @@ export default function Dashboard() {
                             )}
 
                             {activeNav === "Settlements" && (
-                                settlements.length > 0 ? (
-                                    settlements.map((settlement) => (
-                                        <div className="se-expense-row" key={settlement.id}>
-                                            <div className="se-expense-icon mint">✓</div>
-
-                                            <div className="se-expense-info">
-                                                <strong>{settlement.person}</strong>
-                                                <span>{settlement.date}</span>
-                                            </div>
-
-                                            <div className="se-expense-amount">
-                                                <strong>{formatMoney(settlement.amount)}</strong>
+                                <div className="settlements-tab-content">
+                                    <section className="settlements-section">
+                                        <div className="settlements-section-heading">
+                                            <div>
+                                                <h2>Balances with friends</h2>
+                                                <p>Choose a friend to review shared expenses and settle up.</p>
                                             </div>
                                         </div>
-                                    ))
-                                ) : (
-                                    <div className="se-empty">
-                                        No settlements recorded yet.
-                                    </div>
-                                )
+
+                                        {loadingFriends ? (
+                                            <p className="settlements-empty">Loading balances...</p>
+                                        ) : friendsError ? (
+                                            <p className="settlements-empty" role="alert">{friendsError}</p>
+                                        ) : people.length === 0 ? (
+                                            <p className="settlements-empty">You don’t have any friends to settle with yet.</p>
+                                        ) : (
+                                            <div className="settlements-friends">
+                                                {people.map((friend) => {
+                                                    const amount = Number(friend.amount) || 0;
+                                                    const owesYou = friend.status === "Owes you";
+                                                    const youOwe = friend.status === "You owe";
+
+                                                    return (
+                                                        <article className="settlement-friend" key={friend.friend_id}>
+                                                            <div className="settlement-friend-avatar" aria-hidden="true">
+                                                                {friendInitials(friend.friend_name).charAt(0) || "?"}
+                                                            </div>
+                                                            <div className="settlement-friend-details">
+                                                                <strong>{friend.friend_name}</strong>
+                                                                <span>
+                                                                    {owesYou ? "Owes you" : youOwe ? "You owe" : "All settled"}
+                                                                </span>
+                                                            </div>
+                                                            <strong className={`settlement-balance ${owesYou ? "is-positive" : youOwe ? "is-negative" : ""}`}>
+                                                                {formatMoney(amount)}
+                                                            </strong>
+                                                            {amount > 0 ? (
+                                                                <button
+                                                                    type="button"
+                                                                    className="settlement-action"
+                                                                    onClick={() => navigate(`/friendchat/${encodeURIComponent(friend.username)}`)}
+                                                                    disabled={!friend.username}
+                                                                >
+                                                                    {youOwe ? "Settle up" : "Review"}
+                                                                    <span aria-hidden="true">↗</span>
+                                                                </button>
+                                                            ) : (
+                                                                <span className="settlement-complete">✓ Settled</span>
+                                                            )}
+                                                        </article>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                    </section>
+
+                                    <section className="settlements-section">
+                                        <div className="settlements-section-heading">
+                                            <div>
+                                                <h2>Recent settlements</h2>
+                                                <p>Your latest settlement activity, including requests awaiting confirmation.</p>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                className="se-text-button"
+                                                onClick={() => {
+                                                    setSettlementsLoading(true);
+                                                    setSettlementsRefresh((value) => value + 1);
+                                                }}
+                                                disabled={settlementsLoading}
+                                            >
+                                                Refresh
+                                            </button>
+                                        </div>
+
+                                        {settlementsLoading ? (
+                                            <p className="settlements-empty">Loading settlement history...</p>
+                                        ) : settlementsError ? (
+                                            <div className="settlements-error" role="alert">
+                                                <span>{settlementsError}</span>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setSettlementsLoading(true);
+                                                        setSettlementsRefresh((value) => value + 1);
+                                                    }}
+                                                >
+                                                    Try again
+                                                </button>
+                                            </div>
+                                        ) : settlements.length === 0 ? (
+                                            <p className="settlements-empty">No settlements or settlement requests yet.</p>
+                                        ) : (
+                                            <div className="settlements-history">
+                                                {settlements.map((settlement) => {
+                                                    const paidByUser = settlement.direction === "paid";
+                                                    const statusText = settlement.status === "accepted"
+                                                        ? "Completed"
+                                                        : paidByUser
+                                                            ? "Awaiting confirmation"
+                                                            : "Needs your confirmation";
+
+                                                    return (
+                                                        <article className="settlement-history-row" key={settlement.id}>
+                                                            <span className={`settlement-history-icon ${settlement.status === "accepted" ? "is-complete" : ""}`}>
+                                                                {settlement.status === "accepted" ? "✓" : "◷"}
+                                                            </span>
+                                                            <div className="settlement-history-details">
+                                                                <strong>{settlement.friend_name}</strong>
+                                                                <span>{settlement.expense_description} · {formatSettlementDate(settlement.created_at)}</span>
+                                                            </div>
+                                                            <div className="settlement-history-amount">
+                                                                <strong>{formatMoney(Number(settlement.amount))}</strong>
+                                                                <span>{statusText}</span>
+                                                            </div>
+                                                        </article>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                    </section>
+                                </div>
                             )}
 
-                            {activeNav === "Settlements" && (
-                                <button
-                                    className="se-btn se-btn-primary"
-                                    onClick={() => setShowSettleForm(true)}
-                                >
-                                    ↔ Record settlement
-                                </button>
-                            )}
                         </section>
                     )}
 
@@ -1432,62 +1531,6 @@ export default function Dashboard() {
                 </div>
             )}
 
-            {showSettleForm && (
-                <div
-                    className="se-modal-backdrop"
-                    onMouseDown={(event) => {
-                        if (event.target === event.currentTarget) {
-                            setShowSettleForm(false);
-                        }
-                    }}
-                >
-                    <form className="se-modal" onSubmit={recordSettlement}>
-                        <div className="se-modal-header">
-                            <div>
-                                <h2>Record a settlement</h2>
-                                <p>Log a payment between you and a friend.</p>
-                            </div>
-                            <button
-                                type="button"
-                                className="se-modal-close"
-                                onClick={() => setShowSettleForm(false)}
-                                aria-label="Close"
-                            >
-                                ×
-                            </button>
-                        </div>
-
-                        <label className="se-field">
-                            Friend
-                            <select
-                                value={settledPerson}
-                                onChange={(event) => setSettledPerson(event.target.value)}
-                            >
-                                {people.map((person) => (
-                                    <option key={person.name}>{person.name}</option>
-                                ))}
-                            </select>
-                        </label>
-
-                        <label className="se-field">
-                            Amount received or paid (₹)
-                            <input
-                                required
-                                type="number"
-                                min="0.01"
-                                step="0.01"
-                                value={settledAmount}
-                                onChange={(event) => setSettledAmount(event.target.value)}
-                                placeholder="0.00"
-                            />
-                        </label>
-
-                        <button className="se-btn se-btn-primary se-submit" type="submit">
-                            Record settlement
-                        </button>
-                    </form>
-                </div>
-            )}
             {ShowAddGroupForm && (
                 <div
                     className="se-modal-backdrop"

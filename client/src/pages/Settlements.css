@@ -1,0 +1,213 @@
+.settlements-tab-content {
+    --settlement-green: #16865c;
+    --settlement-muted: #84908a;
+    color: #202c27;
+}
+
+.settlements-section {
+    margin-top: 22px;
+    padding: 24px;
+    border: 1px solid #e9eeea;
+    border-radius: 16px;
+    background: #fff;
+    box-shadow: 0 6px 24px rgb(34 55 42 / 3%);
+}
+
+.settlements-section:first-child {
+    margin-top: 0;
+}
+
+.settlements-section-heading {
+    margin-bottom: 18px;
+}
+
+.settlements-section-heading h2 {
+    margin: 0;
+    font: 700 17px "Manrope", sans-serif;
+}
+
+.settlements-section-heading p {
+    margin: 6px 0 0;
+    color: var(--settlement-muted);
+    font-size: 12px;
+}
+
+.settlements-friends,
+.settlements-history {
+    display: grid;
+}
+
+.settlement-friend,
+.settlement-history-row {
+    display: flex;
+    min-height: 74px;
+    align-items: center;
+    gap: 14px;
+    border-top: 1px solid #eef1ee;
+}
+
+.settlement-friend-avatar,
+.settlement-history-icon {
+    display: grid;
+    width: 40px;
+    height: 40px;
+    flex: 0 0 40px;
+    place-items: center;
+    border-radius: 50%;
+    background: #e6f4eb;
+    color: #24774f;
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.settlement-friend-details,
+.settlement-history-details,
+.settlement-history-amount {
+    display: grid;
+    min-width: 0;
+    gap: 5px;
+}
+
+.settlement-friend-details strong,
+.settlement-history-details strong,
+.settlement-history-amount strong {
+    font-size: 13px;
+}
+
+.settlement-friend-details span,
+.settlement-history-details span,
+.settlement-history-amount span {
+    overflow: hidden;
+    color: var(--settlement-muted);
+    font-size: 11px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.settlement-balance {
+    margin-left: auto;
+    font-size: 13px;
+    white-space: nowrap;
+}
+
+.settlement-balance.is-positive {
+    color: #16865c;
+}
+
+.settlement-balance.is-negative {
+    color: #c15f45;
+}
+
+.settlement-action {
+    display: inline-flex;
+    min-height: 36px;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 0 12px;
+    border: 0;
+    border-radius: 8px;
+    background: #eaf6ef;
+    color: #116d4a;
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.settlement-action:hover:not(:disabled) {
+    background: #d7eddf;
+}
+
+.settlement-complete {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin-left: auto;
+    color: #16865c;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.settlement-history-icon {
+    background: #fff4e5;
+    color: #a56a13;
+}
+
+.settlement-history-icon.is-complete {
+    background: #e6f4eb;
+    color: #24774f;
+}
+
+.settlement-history-amount {
+    flex: 0 0 auto;
+    justify-items: end;
+    margin-left: auto;
+    text-align: right;
+}
+
+.settlements-empty {
+    margin: 0;
+    padding: 20px 0 8px;
+    border-top: 1px solid #eef1ee;
+    color: var(--settlement-muted);
+    font-size: 13px;
+}
+
+.settlements-error {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 14px 16px;
+    border: 1px solid #f1c7bd;
+    border-radius: 10px;
+    background: #fff4f1;
+    color: #9c3d2c;
+    font-size: 13px;
+}
+
+.settlements-error button {
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    text-decoration: underline;
+}
+
+@media (max-width: 640px) {
+    .settlements-section {
+        padding: 18px 14px;
+    }
+
+    .settlement-friend,
+    .settlement-history-row {
+        gap: 9px;
+    }
+
+    .settlement-friend-avatar,
+    .settlement-history-icon {
+        width: 34px;
+        height: 34px;
+        flex-basis: 34px;
+    }
+
+    .settlement-friend-details strong,
+    .settlement-history-details strong {
+        font-size: 12px;
+    }
+
+    .settlement-balance {
+        font-size: 11px;
+    }
+
+    .settlement-action {
+        min-height: 32px;
+        padding: 0 8px;
+        font-size: 10px;
+    }
+
+    .settlement-history-details span {
+        max-width: 180px;
+    }
+}
