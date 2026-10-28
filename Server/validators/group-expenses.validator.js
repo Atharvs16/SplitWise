@@ -8,7 +8,10 @@ const createExpenseSchema = z.object({
     split: z.discriminatedUnion("type", [
         z.object({
             type: z.literal("equal"),
-            userIds: z.array(uuidSchema).min(1)
+            userIds: z.array(uuidSchema).min(1).refine(
+                userIds => new Set(userIds).size === userIds.length,
+                "Split participants must be unique."
+            )
         }),
         z.object({
             type: z.literal("amount"),

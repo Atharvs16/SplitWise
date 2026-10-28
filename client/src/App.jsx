@@ -7,6 +7,7 @@ import { AuthProvider } from './AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import NotFound from './pages/NotFound'
 import FriendChat from "./pages/FriendChat";
+import GroupChat from "./pages/GroupChat";
 
 const router = createBrowserRouter([
   {
@@ -31,6 +32,14 @@ const router = createBrowserRouter([
       {
         path:"/friendchat/:username",
         element: <FriendChat />,
+      },
+      {
+        path: "/groupchat",
+        element: <GroupChat />,
+      },
+      {
+        path: "/groupchat/:groupId",
+        element: <GroupChat />,
       }
     ],
   },

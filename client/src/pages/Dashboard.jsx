@@ -1084,10 +1084,7 @@ export default function Dashboard() {
                                             <button
                                                 className="se-group-row"
                                                 key={group.id}
-                                                onClick={() => {
-                                                    setActiveNav("Groups");
-                                                    handleTabChange("Groups");
-                                                }}
+                                                onClick={() => navigate(`/groupchat/${group.id}`)}
                                             >
                                                 <span
                                                     className={`se-group-icon ${groupColors[index % groupColors.length]}`}
@@ -1251,7 +1248,12 @@ export default function Dashboard() {
                                     <div className="se-empty">You haven't created any groups yet. Create one to get started.</div>
                                 ) : (
                                     groups.map((group, index) => (
-                                        <div className="se-expense-row" key={group.id}>
+                                        <button
+                                            type="button"
+                                            className="se-expense-row"
+                                            key={group.id}
+                                            onClick={() => navigate(`/groupchat/${group.id}`)}
+                                        >
                                             <div className={`se-expense-icon ${groupColors[index % groupColors.length]}`}>
                                                 👥
                                             </div>
@@ -1266,7 +1268,7 @@ export default function Dashboard() {
                                                 </strong>
                                                 <span>Your balance</span>
                                             </div>
-                                        </div>
+                                        </button>
                                     ))
                                 )
                             )}

@@ -1,6 +1,6 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../AuthContext";
 import "./FriendChat.css";
 
@@ -135,6 +135,7 @@ export default function FriendChat() {
     const [mobileChatOpen, setMobileChatOpen] = useState(false);
     const [composerOpen, setComposerOpen] = useState(false);
     const [settleTarget, setSettleTarget] = useState(null);
+    const [bulkAction, setBulkAction] = useState(null);
     const chatRequestId = useRef(0);
 
     const selectedFriend = useMemo(
@@ -233,6 +234,25 @@ export default function FriendChat() {
             }, 0),
         [expenses]
     );
+    const bulkActionExpenses = useMemo(
+        () => expenses.filter((expense) =>
+            balance > 0
+                ? expense.paidBy === "me" &&
+                    (expense.actionAmount > 0 || (expense.settlements ?? []).some(
+                        (settlement) =>
+                            settlement.status === "requested" &&
+                            String(settlement.paid_by) === selectedFriend?.id
+                    ))
+                : balance < 0 && expense.paidBy === "friend" && expense.actionAmount > 0
+        ),
+        [balance, expenses, selectedFriend?.id]
+    );
+    const bulkActionAmount = bulkActionExpenses.reduce(
+        (total, expense) =>
+            total + expense.actionAmount +
+            (balance > 0 ? expense.requestedAmount : 0),
+        0
+    );
 
     async function createSplit(payload) {
         if (!selectedFriend) return;
@@ -320,6 +340,80 @@ export default function FriendChat() {
         }
     }
 
+    async function performBulkAction() {
+        if (!selectedFriend || !bulkAction || bulkActionExpenses.length === 0) return;
+
+        const action = bulkAction;
+        setSubmitting(true);
+        setError("");
+        setNotice("");
+
+        try {
+            const results = [];
+            for (const expense of bulkActionExpenses) {
+                try {
+                    if (action === "settle") {
+                        const incomingRequests = (expense.settlements ?? []).filter(
+                            (settlement) =>
+                                settlement.status === "requested" &&
+                                String(settlement.paid_by) === selectedFriend.id
+                        );
+                        for (const request of incomingRequests) {
+                            await apiRequest(
+                                authenticatedFetch,
+                                API.acceptSettlementRequest(request.id),
+                                { method: "POST" }
+                            );
+                        }
+
+                        if (expense.actionAmount > 0) {
+                            await apiRequest(
+                                authenticatedFetch,
+                                API.settleExpense(selectedFriend.id, expense.id),
+                                {
+                                    method: "POST",
+                                    body: JSON.stringify({ amount: expense.actionAmount }),
+                                }
+                            );
+                        }
+                    } else {
+                        await apiRequest(
+                            authenticatedFetch,
+                            API.requestSettlement(selectedFriend.id, expense.id),
+                            {
+                                method: "POST",
+                                body: JSON.stringify({ amount: expense.actionAmount }),
+                            }
+                        );
+                    }
+                    results.push({ success: true });
+                } catch (actionError) {
+                    results.push({ success: false, error: getErrorMessage(actionError) });
+                }
+            }
+
+            await Promise.all([loadChat(selectedFriend.id), loadFriends()]);
+            setBulkAction(null);
+
+            const failures = results.filter((result) => !result.success);
+            if (failures.length > 0) {
+                throw new Error(
+                    `${results.length - failures.length} of ${results.length} expenses were processed. ${failures[0].error}`
+                );
+            }
+
+            setNotice(
+                action === "settle"
+                    ? `${results.length} outstanding split${results.length === 1 ? "" : "s"} marked as settled.`
+                    : `Settlement requested for ${results.length} outstanding split${results.length === 1 ? "" : "s"}.`
+            );
+        } catch (actionError) {
+            setError(getErrorMessage(actionError));
+        } finally {
+            setSubmitting(false);
+        }
+    }
+
     return (
         <main className="fc-page">
             <section
@@ -334,6 +428,9 @@ export default function FriendChat() {
                             </div>
                             <p className="fc-muted">Your people, your splits.</p>
                         </div>
+                        <Link className="fc-dashboard-link" to="/workspace" aria-label="Back to dashboard">
+                            <svg width="14px" height="14px" viewBox="0 0 1024 1024" fill="#6B8173" class="icon" version="1.1" xmlns="http://www.w3.org/2000/svg" stroke="#000000" stroke-width="102.4"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round" stroke="#6B8173" stroke-width="14.336000000000002"></g><g id="SVGRepo_iconCarrier"><path d="M669.6 849.6c8.8 8 22.4 7.2 30.4-1.6s7.2-22.4-1.6-30.4l-309.6-280c-8-7.2-8-17.6 0-24.8l309.6-270.4c8.8-8 9.6-21.6 2.4-30.4-8-8.8-21.6-9.6-30.4-2.4L360.8 480.8c-27.2 24-28 64-0.8 88.8l309.6 280z" fill=""></path></g></svg>
+                        </Link>
                     </div>
 
                     <div className="fc-search">
@@ -388,18 +485,22 @@ export default function FriendChat() {
                                 </div>
 
                                 <div className="fc-header-balance">
-                                    <span>Net balance</span>
-                                    <strong className={balance > 0 ? "fc-positive" : balance < 0 ? "fc-negative" : ""}>
-                                        {balance > 0 ? "+" : balance < 0 ? "−" : ""}
-                                        {money(Math.abs(balance))}
-                                    </strong>{/* 
-                                    <small>
-                                        {balance > 0
-                                            ? "They owe you"
-                                            : balance < 0
-                                                ? "You owe them"
-                                                : "All square"}
-                                    </small> */}
+                                    <div className="fc-balance-value">
+                                        <span>Net balance</span>
+                                        <strong className={balance > 0 ? "fc-positive" : balance < 0 ? "fc-negative" : ""}>
+                                            {balance > 0 ? "+" : balance < 0 ? "−" : ""}
+                                            {money(Math.abs(balance))}
+                                        </strong>
+                                    </div>
+                                    {balance !== 0 && (
+                                        <button
+                                            className="fc-balance-action"
+                                            onClick={() => setBulkAction(balance > 0 ? "settle" : "request")}
+                                            disabled={submitting || loadingChat || bulkActionExpenses.length === 0}
+                                        >
+                                            {balance > 0 ? "Settle all" : "Request to settle all"}
+                                        </button>
+                                    )}
                                 </div>
                             </header>
 
@@ -479,6 +580,18 @@ export default function FriendChat() {
                 />
             )}
 
+            {bulkAction && selectedFriend && (
+                <BulkSettlementConfirmation
+                    action={bulkAction}
+                    friendName={selectedFriend.name}
+                    amount={bulkActionAmount}
+                    expenseCount={bulkActionExpenses.length}
+                    busy={submitting}
+                    onClose={() => setBulkAction(null)}
+                    onConfirm={performBulkAction}
+                />
+            )}
+
             {settleTarget && (
                 <div
                     className="fc-overlay"
@@ -524,6 +637,54 @@ export default function FriendChat() {
                 </div>
             )}
         </main>
+    );
+}
+
+function BulkSettlementConfirmation({
+    action,
+    friendName,
+    amount,
+    expenseCount,
+    busy,
+    onClose,
+    onConfirm,
+}) {
+    const isSettle = action === "settle";
+
+    return (
+        <div
+            className="fc-overlay"
+            onMouseDown={(event) => {
+                if (event.target === event.currentTarget && !busy) onClose();
+            }}
+        >
+            <section className="fc-confirm-modal" role="dialog" aria-modal="true">
+                <button className="fc-modal-close" onClick={onClose} disabled={busy} aria-label="Close">
+                    ×
+                </button>
+                <div className="fc-modal-icon">{isSettle ? "✓" : "↗"}</div>
+                <h2>{isSettle ? "Settle all outstanding splits?" : "Request settlement for all?"}</h2>
+                <p>
+                    {isSettle
+                        ? <>Confirm you received payment from <strong>{friendName}</strong> for their outstanding splits.</>
+                        : <>Request <strong>{friendName}</strong> to settle all of your outstanding splits.</>}
+                </p>
+                <div className="fc-confirm-amount">{money(amount)}</div>
+                <p className="fc-modal-warning">
+                    {isSettle
+                        ? "Only confirm payments that have actually been received."
+                        : `${expenseCount} split${expenseCount === 1 ? "" : "s"} will receive a settlement request.`}
+                </p>
+                <div className="fc-modal-actions">
+                    <button className="fc-secondary-btn" onClick={onClose} disabled={busy}>
+                        Cancel
+                    </button>
+                    <button className="fc-primary-btn" onClick={onConfirm} disabled={busy}>
+                        {busy ? "Processing..." : isSettle ? "Confirm settlement" : "Send requests"}
+                    </button>
+                </div>
+            </section>
+        </div>
     );
 }
 

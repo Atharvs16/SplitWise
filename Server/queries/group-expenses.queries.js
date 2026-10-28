@@ -173,9 +173,6 @@ async function createGroupExpense(userId, groupId, expense) {
             if (participantIds.length !== expense.split.userIds.length) {
                 throw createHttpError("Split participants must be unique.", 400);
             }
-            if (!participantIds.includes(userId)) {
-                participantIds.push(userId);
-            }
             splits = makeEqualSplits(expense.amount, participantIds);
         } else if (expense.split.type === "amount") {
             splits = expense.split.shares.map(share => ({
