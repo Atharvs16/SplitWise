@@ -2045,7 +2045,9 @@ export default function Dashboard() {
                     </div>
                 </div>
             )}
-            {showNotificationTab && (<Notifications />)}
+            {showNotificationTab && (
+                <Notifications onClose={() => setShowNotificationTab(false)} />
+            )}
         </div>
     );
 }

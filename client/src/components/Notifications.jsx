@@ -1,135 +1,303 @@
-
-import React, { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../AuthContext";
 import "./Notifications.css";
 
 const CATEGORIES = [
-  { id: "friend_requests", label: "Friend Requests", icon: "👤" },
-  { id: "group_add_requests", label: "Group Add Requests", icon: "👥" },
-  { id: "splits_requests", label: "Splits Requests", icon: "💸" },
-  { id: "other", label: "Other", icon: "🔔" },
+  { id: "friend_requests", label: "Friend requests", icon: "👤" },
+  { id: "friend_splits", label: "Friend split requests", icon: "↔" },
+  { id: "group_splits", label: "Group split requests", icon: "👥" },
+  { id: "other", label: "Other activity", icon: "🔔" },
 ];
 
-const API_URL = "/api/notifications";
+const EMPTY_NOTIFICATIONS = {
+  friend_requests: [],
+  friend_splits: [],
+  group_splits: [],
+  other: [],
+};
 
-export default function Notifications() {
+const READ_NOTIFICATIONS_KEY = "splitease-read-notifications";
+
+function readNotificationIds() {
+  try {
+    const storedIds = window.localStorage.getItem(READ_NOTIFICATIONS_KEY);
+    if (!storedIds) return new Set();
+    const parsedIds = JSON.parse(storedIds);
+    return Array.isArray(parsedIds) ? new Set(parsedIds) : new Set();
+  } catch (error) {
+    console.error("Could not read notification state:", error);
+    return new Set();
+  }
+}
+
+function notificationKey(category, notification) {
+  return `${category}:${notification.request_id ?? notification.id}`;
+}
+
+async function getJson(authenticatedFetch, url) {
+  const response = await authenticatedFetch(url);
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.error || data.message || "Failed to load notifications.");
+  }
+  return data;
+}
+
+function formatDate(value) {
+  if (!value) return "";
+  const parsedDate = new Date(value);
+  if (Number.isNaN(parsedDate.getTime())) return "";
+  return parsedDate.toLocaleString("en-IN", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+}
+
+function formatMoney(value) {
+  return new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 2,
+  }).format(Number(value) || 0);
+}
+
+export default function Notifications({ onClose }) {
+  const { authenticatedFetch } = useAuth();
+  const navigate = useNavigate();
   const [activeCategory, setActiveCategory] = useState("friend_requests");
-  const [notifications, setNotifications] = useState([]);
+  const [notifications, setNotifications] = useState(EMPTY_NOTIFICATIONS);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [actionError, setActionError] = useState("");
+  const [pendingAction, setPendingAction] = useState("");
+  const [readIds, setReadIds] = useState(readNotificationIds);
 
   const fetchNotifications = useCallback(async () => {
     try {
-      setLoading(true);
       setError("");
+      const [friendRequests, friendSplits, groupSplits, activity] = await Promise.all([
+        getJson(authenticatedFetch, "/api/friends/requests"),
+        getJson(
+          authenticatedFetch,
+          "/api/friends/settlement-requests?direction=incoming&status=requested"
+        ),
+        getJson(
+          authenticatedFetch,
+          "/api/groups/settlement-requests?direction=incoming&status=requested"
+        ),
+        getJson(authenticatedFetch, "/api/activity"),
+      ]);
 
-      const response = await fetch(API_URL, {
-        method: "GET",
-        credentials: "include",
-        headers: {
-          Accept: "application/json",
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to load notifications.");
+      const lists = [
+        friendRequests.requests,
+        friendSplits.requests,
+        groupSplits.requests,
+        activity.activities,
+      ];
+      if (lists.some((items) => !Array.isArray(items))) {
+        throw new Error("The notifications response was not in the expected format.");
       }
 
-      const data = await response.json();
-
-      // Expected response: { notifications: [...] }
-      setNotifications(data.notifications ?? []);
-    } catch (err) {
-      setError(err.message || "Something went wrong.");
+      setNotifications({
+        friend_requests: friendRequests.requests,
+        friend_splits: friendSplits.requests,
+        group_splits: groupSplits.requests,
+        other: activity.activities.filter((item) => item.activity_type === "expense"),
+      });
+    } catch (fetchError) {
+      setError(fetchError.message || "Failed to load notifications.");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [authenticatedFetch]);
 
   useEffect(() => {
-    fetchNotifications();
+    const timer = window.setTimeout(() => {
+      void fetchNotifications();
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [fetchNotifications]);
 
-  const filteredNotifications = notifications.filter(
-    (notification) => notification.type === activeCategory
-  );
+  useEffect(() => {
+    function handleKeyDown(event) {
+      if (event.key === "Escape") onClose();
+    }
 
-  const getCount = (categoryId) =>
-    notifications.filter(
-      (notification) =>
-        notification.type === categoryId && !notification.read
-    ).length;
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
 
-  const formatDate = (date) => {
-    if (!date) return "";
+  const selectedNotifications = notifications[activeCategory];
 
-    const parsedDate = new Date(date);
+  useEffect(() => {
+    if (loading || error) return undefined;
 
-    if (Number.isNaN(parsedDate.getTime())) return "";
+    const timer = window.setTimeout(() => {
+      const nextReadIds = new Set(readIds);
+      notifications[activeCategory].forEach((notification) => {
+        nextReadIds.add(notificationKey(activeCategory, notification));
+      });
 
-    return parsedDate.toLocaleString(undefined, {
-      dateStyle: "medium",
-      timeStyle: "short",
-    });
-  };
+      if (nextReadIds.size > readIds.size) {
+        try {
+          window.localStorage.setItem(
+            READ_NOTIFICATIONS_KEY,
+            JSON.stringify([...nextReadIds].slice(-1000))
+          );
+          setReadIds(nextReadIds);
+        } catch (storageError) {
+          console.error("Could not save notification read state:", storageError);
+          setActionError("Could not save read status. Check your browser storage settings.");
+        }
+      }
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [activeCategory, error, loading, notifications, readIds]);
+
+  async function respondToFriendRequest(requestId, action) {
+    setPendingAction(requestId);
+    setActionError("");
+    try {
+      const response = await authenticatedFetch(
+        `/api/friends/requests/${encodeURIComponent(requestId)}/${action}`,
+        { method: "POST" }
+      );
+      const data = await response.json();
+      if (!response.ok || data.message === "Friend request not found or already processed") {
+        throw new Error(data.error || data.message || "Could not update friend request.");
+      }
+      setLoading(true);
+      await fetchNotifications();
+    } catch (actionRequestError) {
+      setActionError(actionRequestError.message || "Could not update friend request.");
+    } finally {
+      setPendingAction("");
+    }
+  }
+
+  function openConversation(url) {
+    onClose();
+    navigate(url);
+  }
+
+  function notificationDetails(notification) {
+    if (activeCategory === "friend_requests") {
+      return {
+        id: notification.request_id,
+        name: notification.name || notification.username || "Someone",
+        message: `@${notification.username || "user"} wants to connect with you.`,
+        createdAt: notification.created_at,
+      };
+    }
+    if (activeCategory === "friend_splits") {
+      return {
+        id: notification.id,
+        name: notification.payer_name || "A friend",
+        message: `Requested ${formatMoney(notification.amount)} for ${notification.expense_description}.`,
+        createdAt: notification.created_at,
+        actionUrl: notification.payer_username
+          ? `/friendchat/${encodeURIComponent(notification.payer_username)}`
+          : null,
+        actionLabel: "Open friend chat",
+      };
+    }
+    if (activeCategory === "group_splits") {
+      return {
+        id: notification.id,
+        name: notification.payer_name || "A group member",
+        message: `Requested ${formatMoney(notification.amount)} for ${notification.expense_description} in ${notification.group_name}.`,
+        createdAt: notification.created_at,
+        actionUrl: notification.group_id
+          ? `/groupchat/${encodeURIComponent(notification.group_id)}`
+          : null,
+        actionLabel: "Open group chat",
+      };
+    }
+
+    return {
+      id: notification.id,
+      name: notification.actor_name || "Expense activity",
+      message: `${notification.title} · ${formatMoney(notification.amount)} · ${notification.context}`,
+      createdAt: notification.created_at,
+    };
+  }
 
   return (
-    <div className="notifications-page">
-      <div className="notifications-header">
-        <div>
-          <h1>Notifications</h1>
-          <p>Stay updated on your requests and activity.</p>
-        </div>
+    <div
+      className="notifications-overlay"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
+      <aside className="notifications-drawer" role="dialog" aria-modal="true" aria-labelledby="notifications-title">
+        <header className="notifications-header">
+          <div>
+            <h1 id="notifications-title">Notifications</h1>
+            <p>Requests and recent activity.</p>
+          </div>
+          <div className="notifications-header-actions">
+            <button
+              className="refresh-button"
+              type="button"
+              onClick={() => {
+                setLoading(true);
+                void fetchNotifications();
+              }}
+              disabled={loading}
+            >
+              {loading ? "Loading..." : "↻ Refresh"}
+            </button>
+            <button className="notifications-close" type="button" onClick={onClose} aria-label="Close notifications">
+              ×
+            </button>
+          </div>
+        </header>
 
-        <button
-          className="refresh-button"
-          onClick={fetchNotifications}
-          disabled={loading}
-        >
-          {loading ? "Loading..." : "↻ Refresh"}
-        </button>
-      </div>
+        {error && (
+          <div className="notifications-error" role="alert">
+            <span>{error}</span>
+            <button
+              type="button"
+              onClick={() => {
+                setLoading(true);
+                void fetchNotifications();
+              }}
+            >
+              Try again
+            </button>
+          </div>
+        )}
+        {actionError && <p className="notification-action-error" role="alert">{actionError}</p>}
 
-      <div className="notifications-layout">
-        {/* Category sidebar */}
-        <aside className="notifications-sidebar">
+        <nav className="notifications-categories" aria-label="Notification categories">
           {CATEGORIES.map((category) => {
-            const count = getCount(category.id);
+            const count = notifications[category.id].filter(
+              (notification) =>
+                !readIds.has(notificationKey(category.id, notification))
+            ).length;
             const isActive = activeCategory === category.id;
-
             return (
               <button
                 key={category.id}
                 type="button"
-                className={`notification-category ${
-                  isActive ? "active" : ""
-                }`}
+                className={`notification-category ${isActive ? "active" : ""}`}
                 onClick={() => setActiveCategory(category.id)}
                 aria-pressed={isActive}
               >
                 <span className="category-icon">{category.icon}</span>
-
-                <span className="category-label">
-                  {category.label}
-                </span>
-
-                {count > 0 && (
-                  <span className="notification-badge">{count}</span>
-                )}
+                <span className="category-label">{category.label}</span>
+                <span className="notification-badge">{count}</span>
               </button>
             );
           })}
-        </aside>
+        </nav>
 
-        {/* Selected category content */}
         <main className="notifications-content">
           <div className="content-header">
-            <h2>
-              {CATEGORIES.find((c) => c.id === activeCategory)?.label}
-            </h2>
-
-            <span className="total-count">
-              {filteredNotifications.length} notifications
-            </span>
+            <h2>{CATEGORIES.find((category) => category.id === activeCategory)?.label}</h2>
+            <span className="total-count">{selectedNotifications.length}</span>
           </div>
 
           {loading ? (
@@ -137,65 +305,95 @@ export default function Notifications() {
               <div className="loading-spinner" />
               <p>Loading notifications...</p>
             </div>
-          ) : error ? (
-            <div className="notification-state error-state">
-              <p>{error}</p>
-              <button onClick={fetchNotifications}>Try again</button>
-            </div>
-          ) : filteredNotifications.length === 0 ? (
+          ) : !error && selectedNotifications.length === 0 ? (
             <div className="notification-state">
               <span className="empty-icon">🔔</span>
-              <h3>You're all caught up!</h3>
-              <p>No notifications in this category.</p>
+              <h3>You’re all caught up!</h3>
+              <p>Nothing to show in this section.</p>
             </div>
-          ) : (
+          ) : !error ? (
             <div className="notification-list">
-              {filteredNotifications.map((notification) => (
-                <article
-                  key={notification.id}
-                  className={`notification-card ${
-                    !notification.read ? "unread" : ""
-                  }`}
-                >
-                  <div className="notification-avatar">
-                    {notification.sender?.name
-                      ?.charAt(0)
-                      ?.toUpperCase() || "N"}
-                  </div>
-
-                  <div className="notification-details">
-                    <div className="notification-title-row">
-                      <h3>{notification.title}</h3>
-
-                      {!notification.read && (
-                        <span
-                          className="unread-dot"
-                          title="Unread"
-                        />
-                      )}
-                    </div>
-
-                    <p>{notification.message}</p>
-
-                    <span className="notification-date">
-                      {formatDate(notification.createdAt)}
-                    </span>
-
-                    {notification.actionUrl && (
-                      <a
-                        className="notification-action"
-                        href={notification.actionUrl}
-                      >
-                        View request →
-                      </a>
+              {selectedNotifications.map((notification) => {
+                const details = notificationDetails(notification);
+                const isRead = readIds.has(
+                  notificationKey(activeCategory, notification)
+                );
+                const content = (
+                  <>
+                    {!isRead && (
+                      <span className="notification-unread-dot" aria-label="Unread" />
                     )}
-                  </div>
-                </article>
-              ))}
+                    <span className="notification-avatar">
+                      {details.name.charAt(0).toUpperCase()}
+                    </span>
+                    <span className="notification-details">
+                      <span className="notification-title-row">
+                        <strong>{details.name}</strong>
+                      </span>
+                      <span className="notification-message">{details.message}</span>
+                      <span className="notification-date">{formatDate(details.createdAt)}</span>
+                      {details.actionUrl && (
+                        <span className="notification-action">{details.actionLabel} →</span>
+                      )}
+                    </span>
+                  </>
+                );
+
+                if (activeCategory === "friend_requests") {
+                  return (
+                    <article
+                      className={`notification-card ${isRead ? "" : "unread"}`}
+                      key={details.id}
+                    >
+                      {content}
+                      <span className="notification-request-actions">
+                        <button
+                          type="button"
+                          className="notification-accept"
+                          onClick={() => void respondToFriendRequest(details.id, "accept")}
+                          disabled={pendingAction === details.id}
+                        >
+                          {pendingAction === details.id ? "Saving..." : "Accept"}
+                        </button>
+                        <button
+                          type="button"
+                          className="notification-reject"
+                          onClick={() => void respondToFriendRequest(details.id, "reject")}
+                          disabled={pendingAction === details.id}
+                        >
+                          Reject
+                        </button>
+                      </span>
+                    </article>
+                  );
+                }
+
+                if (details.actionUrl) {
+                  return (
+                    <button
+                      type="button"
+                      className={`notification-card notification-card-link ${isRead ? "" : "unread"}`}
+                      key={details.id}
+                      onClick={() => openConversation(details.actionUrl)}
+                    >
+                      {content}
+                    </button>
+                  );
+                }
+
+                return (
+                  <article
+                    className={`notification-card ${isRead ? "" : "unread"}`}
+                    key={details.id}
+                  >
+                    {content}
+                  </article>
+                );
+              })}
             </div>
-          )}
+          ) : null}
         </main>
-      </div>
+      </aside>
     </div>
   );
 }
