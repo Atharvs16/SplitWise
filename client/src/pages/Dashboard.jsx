@@ -220,6 +220,7 @@ export default function Dashboard() {
     );
     const [activitiesError, setActivitiesError] = useState("");
     const [groups, setGroups] = useState([]);
+    const [dataRefresh, setDataRefresh] = useState(0);
     const [loadingGroups, setLoadingGroups] = useState(true);
     const [groupsError, setGroupsError] = useState("");
     const [activeNav, setActiveNav] = useState(activeTab);
@@ -247,13 +248,16 @@ export default function Dashboard() {
     const [notice, setNotice] = useState("");
     const [expenseTitle, setExpenseTitle] = useState("");
     const [expenseAmount, setExpenseAmount] = useState("");
-    const [expenseGroup, setExpenseGroup] = useState("Flatmates");
+    const [expenseTargetType, setExpenseTargetType] = useState("group");
+    const [expenseGroupId, setExpenseGroupId] = useState("");
+    const [expenseFriendId, setExpenseFriendId] = useState("");
+    const [expenseCreationError, setExpenseCreationError] = useState("");
+    const [creatingExpense, setCreatingExpense] = useState(false);
     const [groupName, setGroupName] = useState("");
     const [groupDescription, setGroupDescription] = useState("");
     const [selectedGroupFriendIds, setSelectedGroupFriendIds] = useState([]);
     const [creatingGroup, setCreatingGroup] = useState(false);
     const [groupCreationError, setGroupCreationError] = useState("");
-    const [paidBy, setPaidBy] = useState("You");
     const [confirmLogout, setConfirmLogout] = useState(false)
     const [greeting, setGreeting] = useState('');
 
@@ -376,7 +380,7 @@ export default function Dashboard() {
         return () => {
             cancelled = true;
         };
-    }, [accessToken, authenticatedFetch]);
+    }, [accessToken, authenticatedFetch, dataRefresh]);
 
     useEffect(() => {
         if (!accessToken || !["Activity", "Dashboard"].includes(activeNav)) return;
@@ -409,7 +413,7 @@ export default function Dashboard() {
         return () => {
             cancelled = true;
         };
-    }, [accessToken, activeNav, authenticatedFetch]);
+    }, [accessToken, activeNav, authenticatedFetch, dataRefresh]);
 
     useEffect(() => {
         if (!accessToken) return;
@@ -444,7 +448,7 @@ export default function Dashboard() {
         return () => {
             cancelled = true;
         };
-    }, [accessToken, authenticatedFetch]);
+    }, [accessToken, authenticatedFetch, dataRefresh]);
 
     useEffect(() => {
         if (!accessToken || activeNav !== "Settlements") return;
@@ -669,19 +673,89 @@ export default function Dashboard() {
         }
     }
 
-    function addExpense(event) {
+    function openExpenseForm() {
+        setExpenseCreationError("");
+        setExpenseTargetType(
+            activeNav === "Friends" ||
+            (!loadingGroups && groups.length === 0 && people.length > 0)
+                ? "friend"
+                : "group"
+        );
+        setShowExpenseForm(true);
+    }
+
+    async function addExpense(event) {
         event.preventDefault();
-
         const amount = Number(expenseAmount);
-        if (!expenseTitle.trim() || !Number.isFinite(amount) || amount <= 0) {
-            return;
-        }
+        setExpenseCreationError("");
+        setCreatingExpense(true);
 
-        setExpenseTitle("");
-        setExpenseAmount("");
-        setShowExpenseForm(false);
-        setActiveNav("Dashboard");
-        setNotice("Expense added to this demo dashboard.");
+        try {
+            if (!expenseTitle.trim() || !Number.isSafeInteger(amount) || amount <= 0) {
+                throw new Error("Enter a description and a whole-number amount greater than zero.");
+            }
+
+            let path;
+            let payload;
+
+            if (expenseTargetType === "group") {
+                const groupId = expenseGroupId || groups[0]?.id;
+                if (!groupId) {
+                    throw new Error("Create or join a group before adding a group expense.");
+                }
+
+                const groupResponse = await authenticatedFetch(`/api/groups/${encodeURIComponent(groupId)}`);
+                const groupData = await groupResponse.json();
+                if (!groupResponse.ok) {
+                    throw new Error(groupData.error || "Could not load group members.");
+                }
+                if (!Array.isArray(groupData.group?.members) || groupData.group.members.length === 0) {
+                    throw new Error("This group has no members available for the expense split.");
+                }
+
+                path = `/api/groups/${encodeURIComponent(groupId)}/expenses`;
+                payload = {
+                    description: expenseTitle.trim(),
+                    amount,
+                    split: {
+                        type: "equal",
+                        userIds: groupData.group.members.map((member) => member.id),
+                    },
+                };
+            } else {
+                const friendId = expenseFriendId || people[0]?.friend_id;
+                if (!friendId) {
+                    throw new Error("Add an accepted friend before creating a personal expense.");
+                }
+
+                path = `/api/friends/${encodeURIComponent(friendId)}/expenses`;
+                payload = {
+                    description: expenseTitle.trim(),
+                    amount,
+                    split: { type: "half" },
+                };
+            }
+
+            const response = await authenticatedFetch(path, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+            });
+            const result = await response.json();
+            if (!response.ok) {
+                throw new Error(result.error || "Could not create the expense.");
+            }
+
+            setExpenseTitle("");
+            setExpenseAmount("");
+            setShowExpenseForm(false);
+            setNotice("Expense added successfully.");
+            setDataRefresh((value) => value + 1);
+        } catch (error) {
+            setExpenseCreationError(error.message || "Could not create the expense.");
+        } finally {
+            setCreatingExpense(false);
+        }
     }
 
     async function createGroup(event) {
@@ -973,6 +1047,12 @@ export default function Dashboard() {
 
                         <div className="se-actions">
                             <button
+                                className="se-btn se-btn-primary"
+                                onClick={openExpenseForm}
+                            >
+                                <span>＋</span> Add expense
+                            </button>
+                            <button
                                 className="se-btn se-btn-secondary"
                                 onClick={() => {
                                     setActiveNav("Settlements");
@@ -982,18 +1062,18 @@ export default function Dashboard() {
                             >
                                 ↔ Settle up
                             </button>
-                            {!(activeNav === "Settlements" || activeNav === "Activity") && <button
-                                className="se-btn se-btn-primary"
+                            {(activeNav === "Friends" || activeNav === "Groups") && <button
+                                className="se-btn se-btn-secondary"
                                 onClick={() => {
-                                    activeNav === "Friends" ? setShowAddFriendForm(true) :
-                                        activeNav === "Groups" ? setShowAddGroupForm(true) :
-                                            setShowExpenseForm(true);
+                                    if (activeNav === "Friends") {
+                                        setShowAddFriendForm(true);
+                                    } else {
+                                        setGroupCreationError("");
+                                        setShowAddGroupForm(true);
+                                    }
                                 }}
                             >
-                                <span>＋</span>
-                                {activeNav === "Friends" ? "Add friend" :
-                                    activeNav === "Groups" ? "Add Group" :
-                                        "Add expense"}
+                                <span>＋</span> {activeNav === "Friends" ? "Add friend" : "Add group"}
                             </button>}
                         </div>
                     </section>
@@ -1252,7 +1332,7 @@ export default function Dashboard() {
                                 {activeNav === "Activity" && (
                                     <button
                                         className="se-btn se-btn-primary"
-                                        onClick={() => setShowExpenseForm(true)}
+                                        onClick={openExpenseForm}
                                     >
                                         ＋ Add expense
                                     </button>
@@ -1496,7 +1576,7 @@ export default function Dashboard() {
                 <div
                     className="se-modal-backdrop"
                     onMouseDown={(event) => {
-                        if (event.target === event.currentTarget) {
+                        if (event.target === event.currentTarget && !creatingExpense) {
                             setShowExpenseForm(false);
                         }
                     }}
@@ -1505,17 +1585,22 @@ export default function Dashboard() {
                         <div className="se-modal-header">
                             <div>
                                 <h2>Add an expense</h2>
-                                <p>Record a shared expense.</p>
+                                <p>Choose a group or friend to share this expense with.</p>
                             </div>
                             <button
                                 type="button"
                                 className="se-modal-close"
                                 onClick={() => setShowExpenseForm(false)}
+                                disabled={creatingExpense}
                                 aria-label="Close"
                             >
                                 ×
                             </button>
                         </div>
+
+                        {expenseCreationError && (
+                            <div className="se-empty" role="alert">{expenseCreationError}</div>
+                        )}
 
                         <label className="se-field">
                             Expense name
@@ -1523,8 +1608,12 @@ export default function Dashboard() {
                                 required
                                 autoFocus
                                 value={expenseTitle}
-                                onChange={(event) => setExpenseTitle(event.target.value)}
+                                onChange={(event) => {
+                                    setExpenseTitle(event.target.value);
+                                    setExpenseCreationError("");
+                                }}
                                 placeholder="e.g. Dinner, groceries"
+                                maxLength={255}
                             />
                         </label>
 
@@ -1532,42 +1621,84 @@ export default function Dashboard() {
                             Total amount (₹)
                             <input
                                 required
-                                min="0.01"
-                                step="0.01"
+                                min="1"
+                                step="1"
                                 type="number"
                                 value={expenseAmount}
-                                onChange={(event) => setExpenseAmount(event.target.value)}
-                                placeholder="0.00"
+                                onChange={(event) => {
+                                    setExpenseAmount(event.target.value);
+                                    setExpenseCreationError("");
+                                }}
+                                placeholder="0"
                             />
                         </label>
 
                         <label className="se-field">
-                            Group
+                            Expense type
                             <select
-                                value={expenseGroup}
-                                onChange={(event) => setExpenseGroup(event.target.value)}
+                                value={expenseTargetType}
+                                onChange={(event) => {
+                                    setExpenseTargetType(event.target.value);
+                                    setExpenseCreationError("");
+                                }}
                             >
-                                {groups.map((group) => (
-                                    <option key={group.name}>{group.name}</option>
-                                ))}
+                                <option value="group">Group expense</option>
+                                <option value="friend">Personal expense with a friend</option>
                             </select>
                         </label>
 
-                        <label className="se-field">
-                            Paid by
-                            <select
-                                value={paidBy}
-                                onChange={(event) => setPaidBy(event.target.value)}
-                            >
-                                <option>You</option>
-                                <option>Rohan</option>
-                                <option>Priya</option>
-                                <option>Ananya</option>
-                            </select>
-                        </label>
+                        {expenseTargetType === "group" ? (
+                            <label className="se-field">
+                                Group
+                                <select
+                                    required
+                                    value={expenseGroupId || groups[0]?.id || ""}
+                                    onChange={(event) => setExpenseGroupId(event.target.value)}
+                                    disabled={loadingGroups || groups.length === 0}
+                                >
+                                    {groups.length === 0
+                                        ? <option value="">No groups available</option>
+                                        : groups.map((group) => (
+                                            <option key={group.id} value={group.id}>{group.name}</option>
+                                        ))}
+                                </select>
+                            </label>
+                        ) : (
+                            <label className="se-field">
+                                Friend
+                                <select
+                                    required
+                                    value={expenseFriendId || people[0]?.friend_id || ""}
+                                    onChange={(event) => setExpenseFriendId(event.target.value)}
+                                    disabled={loadingFriends || people.length === 0}
+                                >
+                                    {people.length === 0
+                                        ? <option value="">No friends available</option>
+                                        : people.map((friend) => (
+                                            <option key={friend.friend_id} value={friend.friend_id}>
+                                                {friend.friend_name}
+                                            </option>
+                                        ))}
+                                </select>
+                            </label>
+                        )}
 
-                        <button className="se-btn se-btn-primary se-submit" type="submit">
-                            Save expense
+                        <p className="se-field-hint">
+                            {expenseTargetType === "group"
+                                ? "This expense will be split equally among all group members."
+                                : "This expense will be split equally between you and your friend."}
+                        </p>
+
+                        <button
+                            className="se-btn se-btn-primary se-submit"
+                            type="submit"
+                            disabled={creatingExpense || (
+                                expenseTargetType === "group"
+                                    ? loadingGroups || groups.length === 0
+                                    : loadingFriends || people.length === 0
+                            )}
+                        >
+                            {creatingExpense ? "Saving..." : "Save expense"}
                         </button>
                     </form>
                 </div>
