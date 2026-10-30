@@ -6,49 +6,6 @@ import "./Settlements.css";
 import Notifications from "../components/Notifications";
 
 
-const initialExpenses = [
-    {
-        id: 1,
-        title: "Dinner at Toit",
-        group: "Flatmates",
-        person: "You paid ₹2,400",
-        amount: 800,
-        date: "Today",
-        icon: "🍕",
-        color: "peach",
-    },
-    {
-        id: 2,
-        title: "Weekly groceries",
-        group: "Flatmates",
-        person: "Rohan paid ₹1,500",
-        amount: 500,
-        date: "Yesterday",
-        icon: "🛒",
-        color: "mint",
-    },
-    {
-        id: 3,
-        title: "Goa trip booking",
-        group: "Goa Trip",
-        person: "Priya paid ₹6,000",
-        amount: 2000,
-        date: "Oct 17",
-        icon: "✈️",
-        color: "lavender",
-    },
-    {
-        id: 4,
-        title: "Cab to airport",
-        group: "Goa Trip",
-        person: "You paid ₹900",
-        amount: 300,
-        date: "16",
-        icon: "🚕",
-        color: "yellow",
-    },
-];
-
 const menuItems = [
     {
         label: "My Profile",
@@ -149,6 +106,40 @@ const formatSettlementDate = (value) => {
         });
 };
 
+function ActivityRow({ activity }) {
+    const isSettlement = activity.activity_type === "settlement";
+    const action = isSettlement
+        ? activity.status === "requested"
+            ? activity.actor_is_current_user
+                ? "You requested settlement"
+                : `${activity.actor_name} requested settlement`
+            : activity.actor_is_current_user
+                ? "You settled"
+                : `${activity.actor_name} settled`
+        : activity.actor_is_current_user
+            ? "You paid"
+            : `${activity.actor_name} paid`;
+    const context = activity.counterparty_name
+        ? `${activity.context} · ${activity.counterparty_name}`
+        : activity.context;
+
+    return (
+        <div className="se-expense-row">
+            <div className={`se-expense-icon ${isSettlement ? "mint" : "lavender"}`}>
+                {isSettlement ? "↔" : "₹"}
+            </div>
+            <div className="se-expense-info">
+                <strong>{activity.title}</strong>
+                <span>{action} · {context}</span>
+            </div>
+            <div className="se-expense-amount">
+                <strong>{formatMoney(Number(activity.amount))}</strong>
+                <span>{formatSettlementDate(activity.created_at)}</span>
+            </div>
+        </div>
+    );
+}
+
 export default function Dashboard() {
     const navigate = useNavigate();
     const { accessToken, authenticatedFetch, setAccessToken } = useAuth();
@@ -223,7 +214,11 @@ export default function Dashboard() {
         setIsOpen(false);
     }
 
-    const [expenses, setExpenses] = useState(initialExpenses);
+    const [activities, setActivities] = useState([]);
+    const [activitiesLoading, setActivitiesLoading] = useState(
+        activeTab === "Activity" || activeTab === "Dashboard"
+    );
+    const [activitiesError, setActivitiesError] = useState("");
     const [groups, setGroups] = useState([]);
     const [loadingGroups, setLoadingGroups] = useState(true);
     const [groupsError, setGroupsError] = useState("");
@@ -384,6 +379,39 @@ export default function Dashboard() {
     }, [accessToken, authenticatedFetch]);
 
     useEffect(() => {
+        if (!accessToken || !["Activity", "Dashboard"].includes(activeNav)) return;
+
+        let cancelled = false;
+        const fetchActivities = async () => {
+            try {
+                const response = await authenticatedFetch("/api/activity");
+                const result = await response.json();
+                if (!response.ok) {
+                    throw new Error(result.error || "Could not load recent activity.");
+                }
+                if (!Array.isArray(result.activities)) {
+                    throw new Error("The activity response was not a list.");
+                }
+                if (!cancelled) {
+                    setActivities(result.activities);
+                    setActivitiesError("");
+                }
+            } catch (error) {
+                if (!cancelled) {
+                    setActivitiesError(error.message || "Could not load recent activity.");
+                }
+            } finally {
+                if (!cancelled) setActivitiesLoading(false);
+            }
+        };
+
+        void fetchActivities();
+        return () => {
+            cancelled = true;
+        };
+    }, [accessToken, activeNav, authenticatedFetch]);
+
+    useEffect(() => {
         if (!accessToken) return;
 
         let cancelled = false;
@@ -472,14 +500,14 @@ export default function Dashboard() {
 
 
 
-    const filteredExpenses = useMemo(
+    const filteredActivities = useMemo(
         () =>
-            expenses.filter((expense) =>
-                `${expense.title} ${expense.group} ${expense.person}`
+            activities.filter((activity) =>
+                `${activity.title} ${activity.context} ${activity.actor_name} ${activity.counterparty_name ?? ""}`
                     .toLowerCase()
                     .includes(search.toLowerCase())
             ),
-        [expenses, search]
+        [activities, search]
     );
     function validatePhone(phone) {
         return /^[6-9]\d{9}$/.test(phone);
@@ -649,20 +677,6 @@ export default function Dashboard() {
             return;
         }
 
-        setExpenses((current) => [
-            {
-                id: Date.now(),
-                title: expenseTitle.trim(),
-                group: expenseGroup,
-                person: `${paidBy} paid ${formatMoney(amount)}`,
-                amount,
-                date: "Just now",
-                icon: "💸",
-                color: "mint",
-            },
-            ...current,
-        ]);
-
         setExpenseTitle("");
         setExpenseAmount("");
         setShowExpenseForm(false);
@@ -725,13 +739,34 @@ export default function Dashboard() {
     const groupColors = ["mint", "peach", "lavender", "yellow"];
     const getGroupBalance = (group) => Number(group.net_balance) || 0;
     const getGroupMemberCount = (group) => Number(group.member_count) || 0;
+    const friendBalances = people.map((person) => {
+        const amount = Number(person.amount) || 0;
+        if (person.status === "Owes you") return amount;
+        if (person.status === "You owe") return -amount;
+        return 0;
+    });
+    const groupBalances = groups.map(getGroupBalance);
+    const allBalances = [...friendBalances, ...groupBalances];
+    const incomingTotal = allBalances.reduce(
+        (total, balance) => total + Math.max(balance, 0),
+        0
+    );
+    const outgoingTotal = allBalances.reduce(
+        (total, balance) => total + Math.max(-balance, 0),
+        0
+    );
+    const netTotal = incomingTotal - outgoingTotal;
+    const balancesLoading = loadingFriends || loadingGroups;
+    const balancesError = friendsError || groupsError;
+    const incomingCount = allBalances.filter((balance) => balance > 0).length;
+    const outgoingCount = allBalances.filter((balance) => balance < 0).length;
 
     const navItems = [
         { label: "Dashboard", icon: "⌂" },
-        { label: "Activity", icon: "↗" },
         { label: "Groups", icon: "▦" },
         { label: "Friends", icon: "♧" },
         { label: "Settlements", icon: "⇄" },
+        { label: "Activity", icon: "↗" },
     ];
 
     if (loading) {
@@ -768,6 +803,9 @@ export default function Dashboard() {
                                 }`}
                             onClick={() => {
                                 setActiveNav(item.label);
+                                if (item.label === "Activity") {
+                                    setActivitiesLoading(true);
+                                }
                                 if (item.label === "Settlements") {
                                     setSettlementsLoading(true);
                                 }
@@ -777,9 +815,6 @@ export default function Dashboard() {
                         >
                             <span className="se-nav-icon">{item.icon}</span>
                             {item.label}
-                            {item.label === "Activity" && (
-                                <span className="se-nav-count">{expenses.length}</span>
-                            )}
                         </button>
                     ))}
                 </nav>
@@ -977,13 +1012,14 @@ export default function Dashboard() {
                                     <div className="se-card-top">
                                         <span className="se-card-icon">↙</span>
                                         <span className="se-card-caption">INCOMING</span>
-                                        <span className="se-card-trend">↗</span>
                                     </div>
                                     <p className="se-card-label">You are owed</p>
-                                    <h2>₹4,250</h2>
+                                    <h2>{balancesLoading ? "..." : balancesError ? "—" : formatMoney(incomingTotal)}</h2>
                                     <div className="se-card-foot">
                                         <span className="se-status-dot" />
-                                        From 3 people
+                                        {balancesError
+                                            ? "Could not load balances"
+                                            : `Across ${incomingCount} friend${incomingCount === 1 ? "" : "s"} or group${incomingCount === 1 ? "" : "s"}`}
                                     </div>
                                 </article>
 
@@ -991,27 +1027,42 @@ export default function Dashboard() {
                                     <div className="se-card-top">
                                         <span className="se-card-icon">↗</span>
                                         <span className="se-card-caption">OUTGOING</span>
-                                        <span className="se-card-trend">↘</span>
                                     </div>
                                     <p className="se-card-label">You owe</p>
-                                    <h2>₹1,800</h2>
+                                    <h2>{balancesLoading ? "..." : balancesError ? "—" : formatMoney(outgoingTotal)}</h2>
                                     <div className="se-card-foot">
                                         <span className="se-status-dot" />
-                                        To 2 people
+                                        {balancesError
+                                            ? "Could not load balances"
+                                            : `Across ${outgoingCount} friend${outgoingCount === 1 ? "" : "s"} or group${outgoingCount === 1 ? "" : "s"}`}
                                     </div>
                                 </article>
 
                                 <article className="se-balance-card se-balance-total">
                                     <div className="se-card-top">
                                         <span className="se-card-icon">◎</span>
-                                        <span className="se-card-caption">YOUR OVERVIEW</span>
-                                        <span className="se-total-pill">Positive</span>
+                                        <span className="se-card-caption">NET BALANCE</span>
+                                        <span className="se-total-pill">
+                                            {netTotal > 0 ? "Positive" : netTotal < 0 ? "Negative" : "Even"}
+                                        </span>
                                     </div>
-                                    <p className="se-card-label">Total net balance</p>
-                                    <h2>+₹2,450</h2>
+                                    <p className="se-card-label">Total</p>
+                                    <h2>
+                                        {balancesLoading
+                                            ? "..."
+                                            : balancesError
+                                                ? "—"
+                                                : `${netTotal > 0 ? "+" : netTotal < 0 ? "−" : ""}${formatMoney(netTotal)}`}
+                                    </h2>
                                     <div className="se-card-foot">
                                         <span className="se-status-dot" />
-                                        You're owed more than you owe
+                                        {balancesError
+                                            ? "Could not load balances"
+                                            : netTotal > 0
+                                                ? "You're owed more than you owe"
+                                                : netTotal < 0
+                                                    ? "You owe more than you're owed"
+                                                    : "You're all settled up"}
                                     </div>
                                 </article>
                             </section>
@@ -1021,12 +1072,13 @@ export default function Dashboard() {
                                     <div className="se-panel-header">
                                         <div>
                                             <h3>Recent activity</h3>
-                                            <p>Your latest shared expenses</p>
+                                            <p>Your latest activity</p>
                                         </div>
                                         <button
                                             className="se-text-button"
                                             onClick={() => {
                                                 setActiveNav("Activity");
+                                                setActivitiesLoading(true);
                                                 handleTabChange("Activity");
                                             }
                                             }
@@ -1040,7 +1092,7 @@ export default function Dashboard() {
                                         <input
                                             value={search}
                                             onChange={(event) => setSearch(event.target.value)}
-                                            placeholder="Search expenses..."
+                                            placeholder="Search activity..."
                                             aria-label="Search expenses"
                                         />
                                         {search && (
@@ -1054,29 +1106,20 @@ export default function Dashboard() {
                                     </label>
 
                                     <div className="se-expense-list">
-                                        {filteredExpenses.length ? (
-                                            filteredExpenses.map((expense) => (
-                                                <div className="se-expense-row" key={expense.id}>
-                                                    <div
-                                                        className={`se-expense-icon ${expense.color}`}
-                                                    >
-                                                        {expense.icon}
-                                                    </div>
-                                                    <div className="se-expense-info">
-                                                        <strong>{expense.title}</strong>
-                                                        <span>
-                                                            {expense.person} · {expense.group}
-                                                        </span>
-                                                    </div>
-                                                    <div className="se-expense-amount">
-                                                        <strong>{formatMoney(expense.amount)}</strong>
-                                                        <span>{expense.date}</span>
-                                                    </div>
-                                                </div>
+                                        {activitiesLoading ? (
+                                            <div className="se-empty">Loading recent activity...</div>
+                                        ) : activitiesError ? (
+                                            <div className="se-empty" role="alert">{activitiesError}</div>
+                                        ) : filteredActivities.length ? (
+                                            filteredActivities.slice(0, 4).map((activity) => (
+                                                <ActivityRow
+                                                    key={`${activity.activity_type}:${activity.id}`}
+                                                    activity={activity}
+                                                />
                                             ))
                                         ) : (
                                             <div className="se-empty">
-                                                No expenses match your search.
+                                                No activity matches your search.
                                             </div>
                                         )}
                                     </div>
@@ -1122,7 +1165,7 @@ export default function Dashboard() {
                                                     <strong>{group.name}</strong>
                                                     <span>{getGroupMemberCount(group)} members</span>
                                                 </span>
-                                                <span className="se-group-balance">
+                                                <span className={`se-group-balance ${getGroupBalance(group) < 0 ? "negative" : ""}`}>
                                                     <strong>
                                                         {getGroupBalance(group) >= 0 ? "+" : "-"}
                                                         {formatMoney(getGroupBalance(group))}
@@ -1198,7 +1241,7 @@ export default function Dashboard() {
                                     <h3>{activeNav}</h3>
                                     <p>
                                         {activeNav === "Activity"
-                                            ? "Browse and search your shared expenses."
+                                            ? "Browse your 10 most recent expenses and settlement events."
                                             : activeNav === "Groups"
                                                 ? "Explore expenses shared with your groups."
                                                 : activeNav === "Friends"
@@ -1223,24 +1266,23 @@ export default function Dashboard() {
                                         <input
                                             value={search}
                                             onChange={(event) => setSearch(event.target.value)}
-                                            placeholder="Search expenses..."
+                                            placeholder="Search activity..."
                                         />
                                     </label>
-                                    {filteredExpenses.map((expense) => (
-                                        <div className="se-expense-row" key={expense.id}>
-                                            <div className={`se-expense-icon ${expense.color}`}>
-                                                {expense.icon}
-                                            </div>
-                                            <div className="se-expense-info">
-                                                <strong>{expense.title}</strong>
-                                                <span>{expense.person} · {expense.group}</span>
-                                            </div>
-                                            <div className="se-expense-amount">
-                                                <strong>{formatMoney(expense.amount)}</strong>
-                                                <span>{expense.date}</span>
-                                            </div>
-                                        </div>
-                                    ))}
+                                    {activitiesLoading ? (
+                                        <div className="se-empty">Loading recent activity...</div>
+                                    ) : activitiesError ? (
+                                        <div className="se-empty" role="alert">{activitiesError}</div>
+                                    ) : filteredActivities.length ? (
+                                        filteredActivities.map((activity) => (
+                                            <ActivityRow
+                                                key={`${activity.activity_type}:${activity.id}`}
+                                                activity={activity}
+                                            />
+                                        ))
+                                    ) : (
+                                        <div className="se-empty">No activity matches your search.</div>
+                                    )}
                                 </>
                             )}
 
@@ -1267,7 +1309,7 @@ export default function Dashboard() {
                                                 <span>{getGroupMemberCount(group)} members</span>
                                             </div>
                                             <div className="se-expense-amount">
-                                                <strong>
+                                                <strong className={getGroupBalance(group) < 0 ? "negative" : ""}>
                                                     {getGroupBalance(group) >= 0 ? "+" : "-"}
                                                     {formatMoney(getGroupBalance(group))}
                                                 </strong>
@@ -1305,7 +1347,7 @@ export default function Dashboard() {
                                                 </div>
 
                                                 <div className="se-expense-amount">
-                                                    <strong>
+                                                    <strong className={person.status === "Owes you" ? "negative" : ""}>
                                                         {formatMoney(Math.abs(person.amount))}
                                                     </strong>
                                                 </div>

@@ -724,6 +724,14 @@ button:disabled {
   font-size: 11px;
 }
 
+.se-group-balance.negative strong {
+  color: #D77B5A;
+}
+
+.se-expense-amount strong.negative {
+  color: #D77B5A;
+}
+
 .se-create-group {
   display: flex;
   align-items: center;
