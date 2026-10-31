@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useAuth } from '../useAuth';
+import { apiUrl } from "../api";
 import "./Auth.css";
 
 const initialSignup = {
@@ -81,7 +82,7 @@ function Auth() {
       setUsernameStatus("checking");
       try {
         const response = await fetch(
-          `/api/auth/check-username?username=${encodeURIComponent(value)}`,
+          apiUrl(`/api/auth/check-username?username=${encodeURIComponent(value)}`),
           { signal: controller.signal }
         );
 
@@ -179,7 +180,7 @@ function Auth() {
     }
 
     try {
-      const response = await fetch("/api/auth/signup", {
+      const response = await fetch(apiUrl("/api/auth/signup"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -226,7 +227,7 @@ function Auth() {
     const isPhone = validatePhone(identifier);
 
     try {
-      const response = await fetch("/api/auth/login", {
+      const response = await fetch(apiUrl("/api/auth/login"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

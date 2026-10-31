@@ -51,7 +51,7 @@ npm install
 npm run dev
 ```
 
-Vite proxies `/api` requests to `http://localhost:3000`. To use another API port, update the proxy in `client/vite.config.js` to match `PORT`.
+The client reads its API base URL from `client/.env.production` (`VITE_API_URL`). Production API requests use that URL; the Vite development proxy reads the same setting. Since `.env.production` is gitignored, configure `VITE_API_URL` in the frontend hosting provider's build environment as well.
 
 Useful client checks:
 

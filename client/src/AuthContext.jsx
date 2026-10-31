@@ -1,12 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { AuthContext } from './AuthContext';
+import { apiUrl } from './api';
 
 export function AuthProvider({ children }) {
   const [accessToken, setAccessToken] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const refreshAccessToken = useCallback(async () => {
-    const response = await fetch('/api/auth/refresh-token', {
+    const response = await fetch(apiUrl('/api/auth/refresh-token'), {
       method: 'POST',
       credentials: 'include',
     });
@@ -29,7 +30,7 @@ export function AuthProvider({ children }) {
     const sendRequest = (token) => {
       const headers = new Headers(options.headers);
       headers.set('Authorization', `Bearer ${token}`);
-      return fetch(url, { ...options, headers });
+      return fetch(apiUrl(url), { ...options, headers });
     };
 
     let response = await sendRequest(accessToken);

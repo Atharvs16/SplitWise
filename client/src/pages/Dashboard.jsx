@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useAuth } from '../useAuth';
+import { apiUrl } from "../api";
 import "./Dashboard.css";
 import "./Settlements.css";
 import Notifications from "../components/Notifications";
@@ -618,7 +619,7 @@ export default function Dashboard() {
 
     async function handleLogout() {
         try {
-            await fetch("/api/auth/logout", {
+            await fetch(apiUrl("/api/auth/logout"), {
                 method: "POST",
                 credentials: "include",
             });
