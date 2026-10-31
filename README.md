@@ -6,9 +6,9 @@ SplitEase is a React/Vite client and Express/PostgreSQL API for tracking shared 
 
 - Node.js with npm
 - PostgreSQL
-- A database schema compatible with the queries in `Server/queries`
+- PostgreSQL with the schema in `Server/db/Splitwise Schema.sql`
 
-The repository currently does not include SQL migrations or a schema bootstrap. Provision the required tables and constraints separately before using database-backed features.
+The SQL file is a fresh-database schema snapshot, not an upgrade migration. Apply it only to a new, empty database. Existing databases need ordered migrations that preserve their data; do not rerun the snapshot against them.
 
 ## Configure the API
 

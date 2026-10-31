@@ -79,8 +79,13 @@ async function addFriend(senderId, receiverId) {
         const query = `
             INSERT INTO friends (sender_id, receiver_id, status)
             VALUES ($1::UUID, $2::UUID, 'pending')
-            ON CONFLICT (sender_id, receiver_id)
+            ON CONFLICT (
+                LEAST(sender_id, receiver_id),
+                GREATEST(sender_id, receiver_id)
+            )
             DO UPDATE SET
+                sender_id = EXCLUDED.sender_id,
+                receiver_id = EXCLUDED.receiver_id,
                 status = 'pending'
             WHERE friends.status = 'rejected'
             RETURNING *;
