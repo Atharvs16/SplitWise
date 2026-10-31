@@ -894,13 +894,6 @@ export default function Dashboard() {
                 </nav>
 
                 <div className="se-sidebar-bottom">
-                    <button
-                        className="se-nav-item"
-                        onClick={() => setNotice("Settings page coming soon.")}
-                    >
-                        <span className="se-nav-icon">⚙</span>
-                        Settings
-                    </button>
 
                     <div className="se-profile" ref={menuRef}>
                         <div className="se-avatar avatar-green">{data?.user?.name?.[0] || "?"}</div>
