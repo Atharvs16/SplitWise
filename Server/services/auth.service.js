@@ -3,25 +3,29 @@ const jwt = require('jsonwebtoken');
 
 const userQueries = require('../queries/users.queries');
 const sessionQueries = require('../queries/sessions.queries');
+const db = require('../config/db');
 
 const config = require('../config/config');
 
 async function register({ name, phone, username, password, ip, userAgent }) {
+    const passwordHash = await bcrypt.hash(password, 10);
+    const client = await db.connect();
     try{
-        const Password_hash = await bcrypt.hash(password, 10);
-    
+        await client.query("BEGIN");
         const user = await userQueries.createUser(
             name,
             phone,
             username,
-            Password_hash,
+            passwordHash,
+            client
         );
 
         const session = await sessionQueries.createSession(
             user.id,
             null,
             ip,
-            userAgent
+            userAgent,
+            client
         );
         
         const refreshToken = jwt.sign(
@@ -39,7 +43,8 @@ async function register({ name, phone, username, password, ip, userAgent }) {
 
         await sessionQueries.updateSessionRefreshToken(
             session.id,
-            refreshTokenHash
+            refreshTokenHash,
+            client
         );
     
         const accessToken = jwt.sign(
@@ -48,11 +53,14 @@ async function register({ name, phone, username, password, ip, userAgent }) {
                 sessionId: session.id
             }, config.JWT_SECRET, { expiresIn: '15m' }
         );
+
+        await client.query("COMMIT");
     
         return {
             id: user.id,
             name: user.name,
             username: user.username,
+            phone: user.phone,
             accessToken,
             refreshToken
         };
@@ -60,18 +68,23 @@ async function register({ name, phone, username, password, ip, userAgent }) {
     }
 
     catch (error) {
-        console.error(error);
-        if (error.detail === `Key (username)=(${username}) already exists.`) { // Unique violation
-            throw new Error(`Username ${username} already exists.`);
+        try {
+            await client.query("ROLLBACK");
+        } catch (rollbackError) {
+            console.error("Failed to roll back registration:", rollbackError);
         }
-        if (error.detail === `Key (phone)=(${phone}) already exists.`){
-            throw new Error(`Phone ${phone} already exists.`);
-            
-        }
-        if (error.constraint === 'chk_users_phone_format') { // Phone format violation
-            throw new Error("Invalid phone number format");
+        if (error.code === "23505") {
+            const conflict = new Error(
+                error.constraint?.toLowerCase().includes("phone")
+                    ? "That phone number is already registered."
+                    : "That username is already taken."
+            );
+            conflict.statusCode = 409;
+            throw conflict;
         }
         throw error;
+    } finally {
+        client.release();
     }
 }
 
@@ -117,7 +130,6 @@ async function login({ username, phone, password, ip, userAgent }) {
             ? await userQueries.getUserByUsername(identifier)
             : await userQueries.getUserByPhone(identifier);
 
-        console.log("Fetched user:", user);
         if (!user || !user.password_hash) {
             return {
                 statusCode: 401,
@@ -126,16 +138,10 @@ async function login({ username, phone, password, ip, userAgent }) {
             };
         }
 
-        console.log(user.password_hash);
-        console.log(password);
-
-        
         const isMatch = await bcrypt.compare(
             password,
             user.password_hash
         );
-
-        console.log(isMatch);
 
         if (!isMatch) {
             return {

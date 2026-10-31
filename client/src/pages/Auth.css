@@ -382,80 +382,6 @@
   line-height: 1.5;
 }
 
-/* Login method */
-
-.auth-method-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 10px;
-  margin: 3px 0 15px;
-}
-
-.auth-method-row > span {
-  color: #6f8076;
-  font-size: 11px;
-  font-weight: 600;
-}
-
-.auth-method-switch {
-  display: flex;
-  gap: 3px;
-  padding: 3px;
-  border-radius: 9px;
-  background: #f0f5f1;
-}
-
-.auth-method-switch button {
-  padding: 7px 10px;
-  border: 0;
-  border-radius: 7px;
-  color: #7d8c82;
-  background: transparent;
-  font-family: inherit;
-  font-size: 10px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.auth-method-switch button.selected {
-  color: #127e4d;
-  background: #fff;
-  box-shadow: 0 1px 4px rgb(30 72 48 / 8%);
-}
-
-.auth-forgot-row {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 8px;
-}
-
-.auth-text-button {
-  padding: 0;
-  border: 0;
-  color: #158957;
-  background: transparent;
-  font-family: inherit;
-  font-size: 10px;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.auth-otp-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
-  margin-top: 9px;
-}
-
-.auth-otp-row > span {
-  color: #8a978f;
-  font-size: 10px;
-  line-height: 1.5;
-}
-
 /* Password feedback */
 
 .auth-password-feedback {
@@ -637,8 +563,7 @@
   cursor: pointer;
 }
 
-.auth-switch-copy button:hover,
-.auth-text-button:hover {
+.auth-switch-copy button:hover {
   text-decoration: underline;
 }
 
@@ -1210,19 +1135,6 @@
   .auth-input-wrap {
     gap: 8px;
     padding: 0 10px;
-  }
-
-  .auth-method-row {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .auth-method-switch {
-    width: 100%;
-  }
-
-  .auth-method-switch button {
-    flex: 1;
   }
 
   .auth-footer {

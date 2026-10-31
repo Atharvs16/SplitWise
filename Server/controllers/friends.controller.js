@@ -1,79 +1,89 @@
 const friendsServices = require("../services/friends.services");
 
+function getAccessToken(req) {
+    const authorization = req.headers.authorization;
+    return authorization?.startsWith("Bearer ") ? authorization.slice(7) : null;
+}
+
+function respondWithError(res, error) {
+    if (error.statusCode) {
+        return res.status(error.statusCode).json({ error: error.message });
+    }
+    console.error(error);
+    return res.status(500).json({ error: "Unable to complete friend request." });
+}
+
 async function searchAddFriend(req, res) {
-    const { username, phone } = req.body;
-    const accessToken = req.headers.authorization?.split(" ")[1];
-    if ((phone && username) || (!username && !phone)) {
-        return res.status(401).json({ error: "Provide exactly one identifier." });
+    const { username, phone } = req.body ?? {};
+    const hasUsername = typeof username === "string" && Boolean(username.trim());
+    const hasPhone = typeof phone === "string" && Boolean(phone.trim());
+    if (hasUsername === hasPhone) {
+        return res.status(400).json({ error: "Provide exactly one identifier." });
+    }
+    if (
+        (hasUsername && username.trim().length > 50) ||
+        (hasPhone && !/^[6-9]\d{9}$/.test(phone.trim()))
+    ) {
+        return res.status(400).json({ error: "Enter a valid username or Indian phone number." });
     }
     try {
-        const result = username ? await friendsServices.searchByUsername(accessToken, username) : await friendsServices.searchByPhone(phone);
-
-        res.status(200).json(result);
+        const result = hasUsername
+            ? await friendsServices.searchByUsername(getAccessToken(req), username.trim())
+            : await friendsServices.searchByPhone(getAccessToken(req), phone.trim());
+        return res.status(200).json(result);
     }
-
     catch (error) {
-        console.log(error);
-        throw error;
+        return respondWithError(res, error);
     }
 }
 
 async function addFriend(req, res) {
-    const { receiverId } = req.body;
-    const accessToken = req.headers.authorization?.split(" ")[1];
-    try {
-        const result = await friendsServices.addFriend(accessToken, receiverId);
-        res.status(201).json(result);
+    const { receiverId } = req.body ?? {};
+    if (typeof receiverId !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(receiverId)) {
+        return res.status(400).json({ error: "A valid friend ID is required." });
     }
-
+    try {
+        const result = await friendsServices.addFriend(getAccessToken(req), receiverId);
+        return res.status(201).json(result);
+    }
     catch (error) {
-        console.log(error);
-        throw error;
+        return respondWithError(res, error);
     }
 }
 
 async function getRequests(req, res) {
-    const accessToken = req.headers.authorization?.split(" ")[1];
     try {
-        const result = await friendsServices.getRequests(accessToken);
-        res.status(200).json({
-            requests: result.rows
-        });
+        const result = await friendsServices.getRequests(getAccessToken(req));
+        return res.status(200).json({ requests: result.rows });
     }
     catch (error) {
-        console.error(error);
-        throw error;
+        return respondWithError(res, error);
     }
 }
 
 async function changeFriendStatus(req, res) {
     const { requestId, action } = req.params;
-    const accessToken = req.headers.authorization?.split(" ")[1];
-
     if (!["accept", "reject"].includes(action)) {
         return res.status(400).json({
             message: "Invalid action",
         });
     }
     try{
-        const result = await friendsServices.changeFriendStatus(accessToken, requestId, action);
-        res.status(201).json(result);
+        const result = await friendsServices.changeFriendStatus(getAccessToken(req), requestId, action);
+        return res.status(200).json(result);
     }
     catch(error){
-        console.error(error);
-        throw error;
+        return respondWithError(res, error);
     }
 }
 
 async function getFriendsWithExpense(req, res) {
-    const accessToken = req.headers.authorization?.split(" ")[1];
     try{
-        const result = await friendsServices.getFriendsWithExpense(accessToken);
-        res.status(200).json(result);
+        const result = await friendsServices.getFriendsWithExpense(getAccessToken(req));
+        return res.status(200).json(result);
     }
     catch(error){
-        console.log(error);
-        throw error;
+        return respondWithError(res, error);
     }
 }
 

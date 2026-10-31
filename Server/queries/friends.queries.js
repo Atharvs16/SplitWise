@@ -44,14 +44,29 @@ LIMIT 20;
     }
 }
 
-async function searchByPhone(phone) {
+async function searchByPhone(id, phone) {
     try {
-        const query = `SELECT name,username FROM users WHERE phone=$1;`;
-        const result = await db.query(query, [phone]);
+        const query = `
+            SELECT
+                u.id,
+                u.username,
+                u.name,
+                CASE
+                    WHEN fr.status = 'accepted' THEN 'friends'
+                    WHEN fr.status = 'pending' AND fr.sender_id = $1::uuid THEN 'request_sent'
+                    WHEN fr.status = 'pending' AND fr.receiver_id = $1::uuid THEN 'request_received'
+                    ELSE 'none'
+                END AS friendship_status
+            FROM users u
+            LEFT JOIN friends fr
+                ON (fr.sender_id = $1::uuid AND fr.receiver_id = u.id)
+                OR (fr.sender_id = u.id AND fr.receiver_id = $1::uuid)
+            WHERE u.id <> $1::uuid AND u.phone = $2
+            LIMIT 1
+        `;
+        const result = await db.query(query, [id, phone]);
 
         return result.rows;
-
-        //return {message: "No user found!"}
     }
     catch (error) {
         console.error(error);
@@ -105,7 +120,7 @@ JOIN users u
 WHERE f.receiver_id = $1
   AND f.status = 'pending'
 ORDER BY f.created_at DESC;`;
-        const result = db.query(query, [userId]);
+        const result = await db.query(query, [userId]);
 
         return result;
     }
@@ -118,7 +133,9 @@ ORDER BY f.created_at DESC;`;
 async function changeFriendStatus(requestId, receiverId, action) {
 
     if (!["accept", "reject"].includes(action)) {
-        return res.status(400).json({ message: "Invalid action" });
+        const error = new Error("Invalid friend request action.");
+        error.statusCode = 400;
+        throw error;
     }
 
     const result = await db.query(

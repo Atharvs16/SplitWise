@@ -1,17 +1,11 @@
 
 import { useState } from "react";
 import {
-  Wallet,
   Menu,
   X,
   ArrowUpRight,
-  Strikethrough,
-  Underline,
 } from "lucide-react";
 import "./LandingNavbar.css";
-
-import { Link } from "react-router-dom";
-import Logo from "/favicon.svg"
 
 export default function LandingNavbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);

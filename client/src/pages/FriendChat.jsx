@@ -1,7 +1,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { useAuth } from "../AuthContext";
+import { useAuth } from "../useAuth";
 import "./FriendChat.css";
 
 const API = {
@@ -36,13 +36,10 @@ const getErrorMessage = (error) =>
     error instanceof Error ? error.message : "Something went wrong.";
 
 async function apiRequest(authenticatedFetch, path, options = {}) {
-    const token = localStorage.getItem("token");
-
     const response = await authenticatedFetch(path, {
         ...options,
         headers: {
             "Content-Type": "application/json",
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
             ...options.headers,
         },
     });

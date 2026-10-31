@@ -1,6 +1,6 @@
 const db = require('../config/db');
 
-async function createUser(name, phone, username, password_hash) {
+async function createUser(name, phone, username, password_hash, queryable = db) {
     const query = `
         INSERT INTO users (name, phone, username, password_hash)
         VALUES ($1, $2, $3, $4)
@@ -8,7 +8,7 @@ async function createUser(name, phone, username, password_hash) {
     `;
     const values = [name, phone, username, password_hash];
 
-    const result = await db.query(query, values);
+    const result = await queryable.query(query, values);
     return result.rows[0];
 };
 

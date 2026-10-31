@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { useAuth } from '../AuthContext';
+import { useAuth } from '../useAuth';
 import "./Auth.css";
 
 const initialSignup = {
@@ -51,7 +51,6 @@ function Auth() {
   const [mode, setMode] = useState(
     searchParams.get("mode") === "signup" ? "signup" : "signin"
   );
-  const [loginMethod, setLoginMethod] = useState("password");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -61,10 +60,8 @@ function Auth() {
   const [login, setLogin] = useState({
     identifier: "",
     password: "",
-    otp: "",
   });
 
-  const [otpRequested, setOtpRequested] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
@@ -75,15 +72,13 @@ function Auth() {
     const value = signup.username.trim();
 
     if (value.length < 3) {
-      setUsernameStatus("idle");
       return;
     }
 
     const controller = new AbortController();
 
-    setUsernameStatus("checking");
-
     const timer = setTimeout(async () => {
+      setUsernameStatus("checking");
       try {
         const response = await fetch(
           `/api/auth/check-username?username=${encodeURIComponent(value)}`,
@@ -118,7 +113,6 @@ function Auth() {
     setMode(nextMode);
     setError("");
     setMessage("");
-    setOtpRequested(false);
   }
 
   function updateSignup(event) {
@@ -128,6 +122,9 @@ function Auth() {
       ...previous,
       [name]: value,
     }));
+    if (name === "username" && value.trim().length < 3) {
+      setUsernameStatus("idle");
+    }
 
     setError("");
     setMessage("");
@@ -181,10 +178,6 @@ function Auth() {
       return;
     }
 
-    setMessage(
-      "Your details look good! Connect your registration API to create your account."
-    );
-
     try {
       const response = await fetch("/api/auth/signup", {
         method: "POST",
@@ -201,13 +194,11 @@ function Auth() {
 
       const data = await response.json();
 
-      console.log(data);
       if (!response.ok) {
         throw new Error(data.message || data.error || "Signup failed");
       }
       fetchtoken(data.accessToken);
 
-      // Navigate only after successful signup
       navigate("/workspace");
 
     } catch (err) {
@@ -215,8 +206,6 @@ function Auth() {
       setError(err.message || "Something went wrong.");
     }
 
-    // TODO: Send signup details to your backend.
-    // Never store plaintext passwords in localStorage.
   }
 
   async function handleLogin(event) {
@@ -228,81 +217,37 @@ function Auth() {
       setError("Enter your phone number or username.");
       return;
     }
-    const isPhone = /^\+?\d{10,15}$/.test(login.identifier);
+    if (!login.password) {
+      setError("Please enter your password.");
+      return;
+    }
 
-    if (loginMethod === "password") {
-      if (!login.password) {
-        setError("Please enter your password.");
-        return;
+    const identifier = login.identifier.trim();
+    const isPhone = validatePhone(identifier);
+
+    try {
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          ...(isPhone ? { phone: identifier } : { username: identifier }),
+          password: login.password,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || data.error || "Login failed");
       }
-
-      try {
-        const response = await fetch("/api/auth/login", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            ...(isPhone
-              ? { phone: login.identifier.trim() }
-              : { username: login.identifier.trim() }),
-            password: login.password,
-          }),
-        });
-
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data.message || data.error || "Signup failed");
-        }
-        fetchtoken(data.accessToken);
-
-        // Navigate only after successful signup
-        navigate("/workspace");
-      }
-      catch (err) {
-        console.error("Signup failed:", err);
-        setError(err.message || "Something went wrong.");
-      }
-
-
-      // TODO: Send credentials to your backend over HTTPS.
-      return;
+      fetchtoken(data.accessToken);
+      navigate("/workspace");
+    } catch (err) {
+      console.error("Login failed:", err);
+      setError(err.message || "Something went wrong.");
     }
-
-    if (!login.otp) {
-      setError("Enter the OTP sent to your registered phone.");
-      return;
-    }
-
-    if (!/^\d{6}$/.test(login.otp)) {
-      setError("Your OTP must contain 6 digits.");
-      return;
-    }
-
-    setMessage(
-      "OTP format looks good. Connect your OTP verification API to continue."
-    );
-
-    // TODO: Verify the OTP with your backend.
-  }
-
-  function handleRequestOtp() {
-    setError("");
-    setMessage("");
-
-    if (!login.identifier.trim()) {
-      setError("Enter your phone number or username first.");
-      return;
-    }
-
-    setOtpRequested(true);
-    setMessage(
-      "UI preview only: connect your backend to send an OTP to the registered phone."
-    );
-
-    // TODO: Request an OTP from your backend.
-    // Add server-side rate limiting and OTP expiry.
   }
 
   return (
@@ -434,38 +379,7 @@ function Auth() {
                   </div>
                 </div>
 
-                <div className="auth-method-row">
-                  <span>Choose how to sign in</span>
-
-                  <div className="auth-method-switch">
-                    <button
-                      type="button"
-                      className={loginMethod === "password" ? "selected" : ""}
-                      onClick={() => {
-                        setLoginMethod("password");
-                        setError("");
-                        setMessage("");
-                      }}
-                    >
-                      Password
-                    </button>
-
-                    <button
-                      type="button"
-                      className={loginMethod === "otp" ? "selected" : ""}
-                      onClick={() => {
-                        setLoginMethod("otp");
-                        setError("");
-                        setMessage("");
-                      }}
-                    >
-                      OTP
-                    </button>
-                  </div>
-                </div>
-
-                {loginMethod === "password" ? (
-                  <div className="auth-field">
+                <div className="auth-field">
                     <label htmlFor="login-password">Password</label>
 
                     <div className="auth-input-wrap">
@@ -499,78 +413,11 @@ function Auth() {
                       </button>
                     </div>
 
-                    <div className="auth-forgot-row">
-                      <button
-                        type="button"
-                        className="auth-text-button"
-                        onClick={() => {
-                          setLoginMethod("otp");
-                          setError("");
-                          setMessage(
-                            "Use OTP sign-in, or connect a password-reset flow to your backend."
-                          );
-                        }}
-                      >
-                        Forgot password?
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="auth-field">
-                    <label htmlFor="login-otp">One-time password</label>
-
-                    <div className="auth-input-wrap">
-                      <span className="auth-input-icon" aria-hidden="true">
-                        <svg viewBox="0 0 24 24" fill="none">
-                          <rect x="3" y="5" width="18" height="14" rx="3" />
-                          <path d="M7 10h.01M12 10h.01M17 10h.01M7 14h10" />
-                        </svg>
-                      </span>
-
-                      <input
-                        id="login-otp"
-                        name="otp"
-                        type="text"
-                        inputMode="numeric"
-                        autoComplete="one-time-code"
-                        maxLength={6}
-                        placeholder="Enter 6-digit OTP"
-                        value={login.otp}
-                        onChange={(event) =>
-                          updateLogin({
-                            ...event,
-                            target: {
-                              ...event.target,
-                              name: "otp",
-                              value: event.target.value.replace(/\D/g, ""),
-                            },
-                          })
-                        }
-                      />
-                    </div>
-
-                    <div className="auth-otp-row">
-                      <span>
-                        {otpRequested
-                          ? "Waiting for your backend to send an OTP"
-                          : "We'll verify your registered phone"}
-                      </span>
-                      <button
-                        type="button"
-                        className="auth-text-button"
-                        onClick={handleRequestOtp}
-                      >
-                        Send OTP
-                      </button>
-                    </div>
-                  </div>
-                )}
+                </div>
 
                 <button type="submit" className="auth-submit">
                   <span>
-                    {loginMethod === "password"
-                      ? "Sign in to SplitEase"
-                      : "Verify & sign in"}
+                    Sign in to SplitEase
                   </span>
                   <span className="auth-submit-arrow" aria-hidden="true">
                     ↗

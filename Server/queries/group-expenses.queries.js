@@ -58,45 +58,46 @@ async function getGroupOverview(userId, groupId) {
     );
 
     const balanceResult = await db.query(
-        `WITH member_balances AS (
-             SELECT
-                 gm.user_id,
-                 COALESCE(SUM(
-                     CASE
-                         WHEN e.paid_by = gm.user_id THEN e.amount - COALESCE(payer_split.amount, 0)
-                         WHEN s.user_id = gm.user_id AND e.paid_by <> gm.user_id THEN -s.amount
-                         ELSE 0
-                     END
-                 ), 0) AS expense_balance
-             FROM group_members gm
-             LEFT JOIN expenses e ON e.group_id = gm.group_id
-             LEFT JOIN expense_splits s ON s.expense_id = e.id
-                                       AND s.user_id = gm.user_id
-             LEFT JOIN expense_splits payer_split ON payer_split.expense_id = e.id
-                                                  AND payer_split.user_id = e.paid_by
-             WHERE gm.group_id = $1::uuid
-             GROUP BY gm.user_id
+        `WITH paid_totals AS (
+             SELECT group_id, paid_by AS user_id, SUM(amount) AS total
+             FROM expenses
+             WHERE group_id = $1::uuid
+             GROUP BY group_id, paid_by
+         ),
+         split_totals AS (
+             SELECT e.group_id, s.user_id, SUM(s.amount) AS total
+             FROM expenses e
+             JOIN expense_splits s ON s.expense_id = e.id
+             WHERE e.group_id = $1::uuid
+             GROUP BY e.group_id, s.user_id
          ),
          settlement_balances AS (
+             SELECT group_id, user_id, SUM(amount) AS total
+             FROM (
+                 SELECT group_id, paid_by AS user_id, amount
+                 FROM settlements
+                 WHERE group_id = $1::uuid AND status = 'accepted'
+                 UNION ALL
+                 SELECT group_id, paid_to AS user_id, -amount
+                 FROM settlements
+                 WHERE group_id = $1::uuid AND status = 'accepted'
+             ) settlement_entries
+             GROUP BY group_id, user_id
+         ),
+         member_balances AS (
              SELECT
                  gm.user_id,
-                 COALESCE(SUM(
-                     CASE
-                         WHEN st.paid_by = gm.user_id THEN st.amount
-                         WHEN st.paid_to = gm.user_id THEN -st.amount
-                         ELSE 0
-                     END
-                 ), 0) AS settlement_balance
+                 COALESCE(pt.total, 0) - COALESCE(st.total, 0) AS expense_balance
              FROM group_members gm
-             LEFT JOIN settlements st
-                    ON st.group_id = gm.group_id
-                   AND st.status = 'accepted'
+             LEFT JOIN paid_totals pt
+                    ON pt.group_id = gm.group_id AND pt.user_id = gm.user_id
+             LEFT JOIN split_totals st
+                    ON st.group_id = gm.group_id AND st.user_id = gm.user_id
              WHERE gm.group_id = $1::uuid
-             GROUP BY gm.user_id
          )
-         SELECT expense_balance + settlement_balance AS net_balance
+         SELECT expense_balance + COALESCE(sb.total, 0) AS net_balance
          FROM member_balances mb
-         JOIN settlement_balances sb USING (user_id)
+         LEFT JOIN settlement_balances sb USING (user_id)
          WHERE mb.user_id = $2::uuid`,
         [groupId, userId]
     );

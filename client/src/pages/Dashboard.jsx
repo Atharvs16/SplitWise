@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState, useRef } from "react";
+import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { useAuth } from '../AuthContext';
+import { useAuth } from '../useAuth';
 import "./Dashboard.css";
 import "./Settlements.css";
 import Notifications from "../components/Notifications";
@@ -84,6 +84,14 @@ const formatMoney = (amount) =>
         maximumFractionDigits: 0,
     }).format(Math.abs(amount));
 
+async function readApiResponse(response) {
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+        throw new Error(data.error || data.message || `Request failed (${response.status}).`);
+    }
+    return data;
+}
+
 const friendInitials = (name = "") =>
     name
         .trim()
@@ -145,6 +153,7 @@ export default function Dashboard() {
     const { accessToken, authenticatedFetch, setAccessToken } = useAuth();
     const [loading, setLoading] = useState(true);
     const [data, setData] = useState(null);
+    const [confirmLogout, setConfirmLogout] = useState(false);
     useEffect(() => {
         if (!accessToken) return;
         const fetchMe = async () => {
@@ -232,7 +241,6 @@ export default function Dashboard() {
     const [searchUserLoading, setSearchUserLoading] = useState(false);
     const [search, setSearch] = useState("");
     const [searchFriend, setSearchFriend] = useState("");
-    const [users, setUsers] = useState([]);
     const [activeFriendTab, setActiveFriendTab] = useState("search");
     const [friendRequests, setFriendRequests] = useState([]);
     const [friendRequestsLoading, setFriendRequestsLoading] = useState(false);
@@ -258,7 +266,6 @@ export default function Dashboard() {
     const [selectedGroupFriendIds, setSelectedGroupFriendIds] = useState([]);
     const [creatingGroup, setCreatingGroup] = useState(false);
     const [groupCreationError, setGroupCreationError] = useState("");
-    const [confirmLogout, setConfirmLogout] = useState(false)
     const [greeting, setGreeting] = useState('');
 
     useEffect(() => {
@@ -284,13 +291,43 @@ export default function Dashboard() {
     }, []);
 
 
+    const validatePhone = (phone) => /^[6-9]\d{9}$/.test(phone);
+
+    const searchAddFriends = useCallback(async (identifier) => {
+        const phone = validatePhone(identifier) ? identifier : "";
+        const username = phone ? "" : identifier;
+        const response = await authenticatedFetch("/api/friends/search-add-friend", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username, phone }),
+        });
+        return readApiResponse(response);
+    }, [authenticatedFetch]);
+
+    const fetchFriendRequests = useCallback(async () => {
+        setFriendRequestsLoading(true);
+        setFriendRequestError("");
+        try {
+            const response = await authenticatedFetch("/api/friends/requests");
+            const result = await readApiResponse(response);
+            setFriendRequests(result.requests ?? []);
+        } catch (error) {
+            console.error("Failed to load friend requests:", error);
+            setFriendRequestError(error.message || "Failed to load friend requests.");
+        } finally {
+            setFriendRequestsLoading(false);
+        }
+    }, [authenticatedFetch]);
+
     useEffect(() => {
         const identifier = searchFriend.trim();
 
         if (!identifier) {
-            setSearchUserResults([]);
-            setSearchUserLoading(false);
-            return;
+            const timer = setTimeout(() => {
+                setSearchUserResults([]);
+                setSearchUserLoading(false);
+            }, 0);
+            return () => clearTimeout(timer);
         }
 
         let cancelled = false;
@@ -338,7 +375,7 @@ export default function Dashboard() {
             cancelled = true;
             clearTimeout(timer);
         };
-    }, [searchFriend]);
+    }, [searchAddFriends, searchFriend]);
 
 
     useEffect(() => {
@@ -346,8 +383,11 @@ export default function Dashboard() {
             return;
         }
 
-        fetchFriendRequests();
-    }, [ShowAddFriendForm, activeFriendTab]);
+        const timer = setTimeout(() => {
+            void fetchFriendRequests();
+        }, 0);
+        return () => clearTimeout(timer);
+    }, [ShowAddFriendForm, activeFriendTab, fetchFriendRequests]);
 
     useEffect(() => {
         if (!accessToken) return;
@@ -513,62 +553,17 @@ export default function Dashboard() {
             ),
         [activities, search]
     );
-    function validatePhone(phone) {
-        return /^[6-9]\d{9}$/.test(phone);
-    }
-
-    async function searchAddFriends(identifier) {
-        const phone = validatePhone(identifier) ? identifier : "";
-        const username = phone ? "" : identifier;
-
-        try {
-            const response = await fetch("/api/friends/search-add-friend", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${accessToken}`,
-                },
-                body: JSON.stringify({
-                    username,
-                    phone
-                })
-            });
-
-
-
-            if (!response.ok) {
-                throw new Error(`Request failed: ${response.status}`);
-            }
-
-            const result = await response.json();
-            console.log(result)
-
-            setUsers(result);
-            return result;
-
-        } catch (error) {
-            console.error(error);
-            throw error;
-        }
-    }
-
     async function handleAddFriend(receiverId) {
         try {
-            const response = await fetch("/api/friends/add-friend", {
+            const response = await authenticatedFetch("/api/friends/add-friend", {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${accessToken}`,
-                },
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     receiverId
                 })
             })
 
-            if (!response.ok) {
-                throw new Error(`Request failed: ${response.status}`);
-            }
-            const result = await response.json();
+            const result = await readApiResponse(response);
 
             setSearchUserResults((prevResults) =>
                 prevResults.map((user) =>
@@ -586,75 +581,38 @@ export default function Dashboard() {
         }
     }
 
-    const fetchFriendRequests = async () => {
-        try {
-            setFriendRequestsLoading(true);
-            setFriendRequestError("");
-
-            const response = await fetch("/api/friends/requests", {
-                method: "GET",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${accessToken}`,
-                },
-                // Add credentials if your authentication uses cookies:
-                // credentials: "include",
-            });
-
-            if (!response.ok) {
-                throw new Error("Failed to load friend requests");
-            }
-
-            const data = await response.json();
-            setFriendRequests(data.requests ?? []);
-        } catch (error) {
-            console.error(error);
-            setFriendRequestError("Failed to load friend requests.");
-        } finally {
-            setFriendRequestsLoading(false);
-        }
-    };
-
     const handleFriendRequestResponse = async (requestId, action) => {
-        if (respondingToRequest === "accepted" || respondingToRequest === "rejected") {
+        if (respondingToRequest !== null) {
             return;
         }
         try {
             setRespondingToRequest(requestId);
             setFriendRequestError("");
 
-            const response = await fetch(
+            const response = await authenticatedFetch(
                 `/api/friends/requests/${requestId}/${action}`,
                 {
                     method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        "Authorization": `Bearer ${accessToken}`,
-                    },
-                    // credentials: "include",
                 }
             );
-            if (!response.ok) {
-                const data = await response.json().catch(() => ({}));
-                throw new Error(
-                    data.message || `Failed to ${action} friend request`
-                );
-            }
+            await readApiResponse(response);
 
             setFriendRequests((previousRequests) =>
                 previousRequests.filter(
-                    (request) => request.id !== requestId
+                    (request) => request.request_id !== requestId
                 )
             );
 
-            // If accepted, refresh your friends list here if needed.
+            if (action === "accept") {
+                setDataRefresh((value) => value + 1);
+            }
         } catch (error) {
             console.error(error);
             setFriendRequestError(
                 error.message || `Failed to ${action} friend request.`
             );
         } finally {
-            setRespondingToRequest(`${action}ed`);
+            setRespondingToRequest(null);
         }
     };
 
@@ -1985,7 +1943,7 @@ export default function Dashboard() {
                                     {friendRequests.map((request) =>
                                     (
                                         <div
-                                            key={request.id}
+                                            key={request.request_id}
                                             className="search-friend-result"
                                         >
                                             <div
@@ -2007,7 +1965,7 @@ export default function Dashboard() {
                                             </div>
 
                                             <div className="friend-request-actions">
-                                                {respondingToRequest !== "rejected" && <button
+                                                <button
                                                     type="button"
                                                     className="accept-request-btn"
                                                     disabled={
@@ -2020,12 +1978,10 @@ export default function Dashboard() {
                                                         )
                                                     }
                                                 >
-                                                    {respondingToRequest === request.request_id ? "Please wait..." :
-                                                        respondingToRequest === "accepted" ? "Accepted" :
-                                                            "Accept"}
-                                                </button>}
+                                                    {respondingToRequest === request.request_id ? "Please wait..." : "Accept"}
+                                                </button>
 
-                                                {respondingToRequest !== "accepted" && <button
+                                                <button
                                                     type="button"
                                                     className="decline-request-btn"
                                                     disabled={
@@ -2038,10 +1994,8 @@ export default function Dashboard() {
                                                         )
                                                     }
                                                 >
-                                                    {respondingToRequest === request.request_id ? "Please wait..." :
-                                                        respondingToRequest === "rejected" ? "Rejected" :
-                                                            "Reject"}
-                                                </button>}
+                                                    {respondingToRequest === request.request_id ? "Please wait..." : "Reject"}
+                                                </button>
                                             </div>
                                         </div>
                                     ))}

@@ -1,6 +1,6 @@
 const db = require('../config/db');
 
-async function createSession(user_id, refresh_token_hash, ip, user_agent) {
+async function createSession(user_id, refresh_token_hash, ip, user_agent, queryable = db) {
     try{
         const query = `
             INSERT INTO sessions (user_id, refresh_token_hash, ip, user_agent)
@@ -10,7 +10,7 @@ async function createSession(user_id, refresh_token_hash, ip, user_agent) {
         const values = [user_id, refresh_token_hash, ip, user_agent];
 
     
-        const result = await db.query(query, values);
+        const result = await queryable.query(query, values);
         return result.rows[0];
     }
     catch (error) {
@@ -36,7 +36,7 @@ async function getSessionById(sessionId, userId) {
     }
 }
 
-async function updateSessionRefreshToken(sessionId, newRefreshTokenHash) {
+async function updateSessionRefreshToken(sessionId, newRefreshTokenHash, queryable = db) {
     try{
         const query = `
             UPDATE sessions
@@ -46,7 +46,7 @@ async function updateSessionRefreshToken(sessionId, newRefreshTokenHash) {
         `;
         const values = [newRefreshTokenHash, sessionId];
 
-        const result = await db.query(query, values);
+        const result = await queryable.query(query, values);
         return result.rows[0];
     }
     catch (error) {

@@ -1,87 +1,51 @@
-const jwt = require("jsonwebtoken");
-const config = require("../config/config");
 const friendsQueries = require("../queries/friends.queries");
 const authServices = require("../services/auth.service");
 
-async function searchByUsername(accesstoken, username) {
-    try {
-        const user = await authServices.getme(accesstoken);
-        const result = await friendsQueries.searchByUsername(user.id, username);
-        return result;
+async function getAuthenticatedUser(accessToken) {
+    if (!accessToken) {
+        const error = new Error("Authentication required.");
+        error.statusCode = 401;
+        throw error;
     }
-    catch (err) {
-        console.log(err);
-        throw err;
+
+    try {
+        return await authServices.getme(accessToken);
+    } catch (error) {
+        if (["JsonWebTokenError", "TokenExpiredError", "UnauthorizedError"].includes(error.name)) {
+            error.statusCode = 401;
+        }
+        throw error;
     }
 }
 
-async function searchByPhone(phone) {
-    try {
-        const result = await friendsQueries.searchByPhone(phone);
-        return result;
-    }
-    catch (err) {
-        console.log(err);
-        throw err;
-    }
+async function searchByUsername(accesstoken, username) {
+    const user = await getAuthenticatedUser(accesstoken);
+    return friendsQueries.searchByUsername(user.id, username);
+}
+
+async function searchByPhone(accessToken, phone) {
+    const user = await getAuthenticatedUser(accessToken);
+    return friendsQueries.searchByPhone(user.id, phone);
 }
 
 async function addFriend(accesstoken, receiverId) {
-    try {
-        const user = await authServices.getme(accesstoken);
-        const result = await friendsQueries.addFriend(user.id, receiverId);
-        return result;
-    }
-    catch (error) {
-        console.log(error);
-        throw error;
-    }
+    const user = await getAuthenticatedUser(accesstoken);
+    return friendsQueries.addFriend(user.id, receiverId);
 }
 
 async function getRequests(accessToken) {
-    try {
-        const user = await authServices.getme(accessToken);
-        if (!user) {
-            return { error: "Invalid user" };
-        }
-        const result = await friendsQueries.getRequests(user.id);
-        return result;
-    }
-    catch (error) {
-        console.error(error);
-        throw error;
-    }
+    const user = await getAuthenticatedUser(accessToken);
+    return friendsQueries.getRequests(user.id);
 }
 
 async function changeFriendStatus(accessToken, requestId, action) {
-    const user = await authServices.getme(accessToken);
-    if (!user) {
-        return { error: "Invalid user" };
-    }
-    try{
-        const result = await friendsQueries.changeFriendStatus(requestId, user.id, action);
-        return result;
-    }
-    catch(error){
-        console.error(error);
-        throw error;
-    }
+    const user = await getAuthenticatedUser(accessToken);
+    return friendsQueries.changeFriendStatus(requestId, user.id, action);
 }
 
 async function getFriendsWithExpense(accessToken) {
-    const user = await authServices.getme(accessToken);
-    if (!user) {
-        return { error: "Invalid user" };
-    }
-
-    try{
-        const result = await friendsQueries.getFriendsWithExpenses(user.id);
-        return result;
-    }
-    catch(error){
-        console.log(error);
-        throw error;
-    }
+    const user = await getAuthenticatedUser(accessToken);
+    return friendsQueries.getFriendsWithExpenses(user.id);
 }
 
 module.exports = {

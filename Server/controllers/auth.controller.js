@@ -35,7 +35,9 @@ async function register(req, res) {
 
     catch (error) {
         console.error(error);
-        res.status(500).json({ error: error.message || "Database error" });
+        return res.status(error.statusCode || 500).json({
+            error: error.statusCode ? error.message : "Unable to create account."
+        });
     }
 }
 

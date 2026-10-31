@@ -11,7 +11,11 @@ router.use(cookieparser());
 router.post("/search-add-friend", friendsController.searchAddFriend);
 router.post("/add-friend", friendsController.addFriend);
 router.get("/requests", friendsController.getRequests);
-router.post("/requests/:requestId/:action", friendsController.changeFriendStatus);
+router.post(
+    "/requests/:requestId/:action",
+    friendExpensesValidator.validateRequestId,
+    friendsController.changeFriendStatus
+);
 router.get("/", friendsController.getFriendsWithExpense);
 router.get("/settlements", friendExpensesController.listSettlements);
 router.get("/settlement-requests", friendExpensesController.listSettlementRequests);
