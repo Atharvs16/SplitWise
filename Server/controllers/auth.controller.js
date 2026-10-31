@@ -13,13 +13,13 @@ async function register(req, res) {
             userAgent: req.get("User-Agent")
         });
 
-        res.cookie('refreshtoken', result.refreshToken, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: 'strict',
-            maxAge: 7 * 24 * 60 * 60 * 1000,
-            path: "/"
-        });
+        res.cookie("refreshtoken", result.refreshToken, {
+    httpOnly: true,
+    secure: true,
+    sameSite: "none",
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+    path: "/"
+});
 
 
         res.status(201).json({
@@ -85,12 +85,12 @@ async function login(req, res) {
         }
 
         res.cookie("refreshtoken", result.refreshToken, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "strict",
-            maxAge: 7 * 24 * 60 * 60 * 1000,
-            path: "/"
-        });
+    httpOnly: true,
+    secure: true,
+    sameSite: "none",
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+    path: "/"
+});
 
         return res.status(result.statusCode).json({
             success: true,
