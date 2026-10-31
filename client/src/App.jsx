@@ -8,6 +8,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import NotFound from './pages/NotFound'
 import FriendChat from "./pages/FriendChat";
 import GroupChat from "./pages/GroupChat";
+import Profile from "./pages/Profile";
 
 const router = createBrowserRouter([
   {
@@ -24,6 +25,10 @@ const router = createBrowserRouter([
       {
         path: "/workspace",
         element: <Dashboard />,
+      },
+      {
+        path: "/:username",
+        element: <Profile />,
       },
       {
         path:"/friendchat",

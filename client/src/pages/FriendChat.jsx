@@ -476,13 +476,13 @@ export default function FriendChat() {
                                     {selectedFriend.initials}
                                 </div>
 
-                                <div className="fc-person-heading">
-                                    <h2>{selectedFriend.name}</h2>
+                                <button className="fc-person-heading"  onClick={() => navigate(`/${encodeURIComponent(selectedFriend.username)}`)}>
+                                    <h2 style={{textAlign: "start"}}>{selectedFriend.name}</h2>
                                     <span>
                                         <span className="fc-status-dot" />
                                         Personal expenses
                                     </span>
-                                </div>
+                                </button>
 
                                 <div className="fc-header-balance">
                                     <div className="fc-balance-value">

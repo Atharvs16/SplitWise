@@ -358,6 +358,8 @@
   flex-direction: column;
   gap: 7px;
   min-width: 0;
+  border: none;
+  background-color: white;
 }
 
 .fc-person-heading h2 {

@@ -265,10 +265,6 @@ function Auth() {
         setError(err.message || "Something went wrong.");
       }
 
-      setMessage(
-        "Form validated. Connect your login API to authenticate your account."
-      );
-
 
       // TODO: Send credentials to your backend over HTTPS.
       return;

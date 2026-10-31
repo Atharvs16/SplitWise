@@ -598,6 +598,31 @@ button:disabled {
   text-align: left;
   transition: all 0.5s ease;
 }
+
+.se-friend-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.se-friend-row .se-expense-row {
+  flex: 1;
+  min-width: 0;
+}
+
+.se-profile-link-button {
+  border: 1px solid #dfe8e1;
+  border-radius: 8px;
+  background: #fff;
+  color: #16865c;
+  padding: 8px 10px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.se-profile-link-button:hover {
+  background: #e9f6ee;
+}
 .se-expense-row:hover{
   background-color:#F5F8F5;
   cursor: pointer;
@@ -1925,12 +1950,14 @@ button:disabled {
   font-size: 14px;
   font-weight: 600;
   overflow-wrap: anywhere;
+  text-align: start;
 }
 
 .search-friend-info span:last-child {
   color: #6b7280;
   font-size: 13px;
   overflow-wrap: anywhere;
+  text-align: start;
 }
 
 .search-friend-result button {

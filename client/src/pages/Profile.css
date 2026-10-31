@@ -1,0 +1,365 @@
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap");
+
+.profile-page {
+    min-height: 100vh;
+    background: #f5f8f5;
+    color: #202c27;
+}
+
+.profile-topbar {
+    height: 72px;
+    padding: 0 max(24px, calc((100vw - 1060px) / 2));
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #fff;
+    border-bottom: 1px solid #e6ece7;
+}
+
+.profile-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    color: #1c3328;
+    font: 800 21px "Manrope", sans-serif;
+    text-decoration: none;
+}
+
+.profile-brand > span > span {
+    color: #16865c;
+}
+
+.profile-back,
+.profile-secondary-button {
+    border: 1px solid #dfe8e1;
+    border-radius: 9px;
+    background: #fff;
+    color: #53655a;
+    padding: 10px 14px;
+    font-size: 13px;
+    font-weight: 650;
+}
+
+.profile-content {
+    width: min(100% - 36px, 920px);
+    margin: 38px auto 64px;
+}
+
+.profile-card {
+    padding: 26px;
+    background: #fff;
+    border: 1px solid #e6ece7;
+    border-radius: 16px;
+    box-shadow: 0 8px 26px rgb(34 57 43 / 4%);
+}
+
+.profile-identity {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    margin-bottom: 18px;
+}
+
+.profile-avatar {
+    width: 76px;
+    height: 76px;
+    flex: 0 0 76px;
+    display: grid;
+    place-items: center;
+    border-radius: 23px;
+    background: #e6f5eb;
+    color: #16865c;
+    font: 800 30px "Manrope", sans-serif;
+}
+
+.profile-identity-copy {
+    min-width: 0;
+    flex: 1;
+}
+
+.profile-eyebrow {
+    color: #16865c;
+    font-size: 11px;
+    font-weight: 750;
+    letter-spacing: 1.1px;
+    text-transform: uppercase;
+}
+
+.profile-identity h1 {
+    margin: 5px 0 2px;
+    font: 800 27px "Manrope", sans-serif;
+    letter-spacing: -0.5px;
+}
+
+.profile-identity p {
+    margin: 0;
+    color: #84908a;
+    font-size: 14px;
+}
+
+.profile-primary-button,
+.profile-danger-button {
+    border: 0;
+    border-radius: 9px;
+    padding: 11px 16px;
+    color: #fff;
+    background: #16865c;
+    font-size: 13px;
+    font-weight: 700;
+    transition: background 150ms ease;
+}
+
+.profile-primary-button:hover {
+    background: #116d4a;
+}
+
+.profile-danger-button {
+    background: #b94d42;
+}
+
+.profile-danger-button:hover {
+    background: #9e3b32;
+}
+
+.profile-settings-grid,
+.profile-friend-details {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+}
+
+.profile-section-heading {
+    margin-bottom: 22px;
+}
+
+.profile-section-heading h2,
+.profile-danger-zone h2 {
+    margin: 0 0 6px;
+    font: 750 17px "Manrope", sans-serif;
+}
+
+.profile-section-heading p,
+.profile-danger-zone p {
+    margin: 0;
+    color: #7d8982;
+    font-size: 13px;
+    line-height: 1.55;
+}
+
+.profile-form,
+.profile-delete-form {
+    display: grid;
+    gap: 15px;
+}
+
+.profile-form label,
+.profile-delete-form label {
+    display: grid;
+    gap: 7px;
+    color: #536159;
+    font-size: 12px;
+    font-weight: 650;
+}
+
+.profile-form input,
+.profile-delete-form input {
+    width: 100%;
+    min-height: 42px;
+    padding: 9px 11px;
+    border: 1px solid #dfe8e1;
+    border-radius: 8px;
+    color: #27382f;
+    background: #fff;
+}
+
+.profile-form .profile-primary-button {
+    justify-self: start;
+    margin-top: 3px;
+}
+
+.profile-danger-zone {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    border-color: #f0d9d6;
+}
+
+.profile-danger-zone > div:first-child {
+    max-width: 570px;
+}
+
+.profile-delete-form {
+    width: min(100%, 410px);
+}
+
+.profile-delete-form > div {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.profile-balance-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 18px;
+}
+
+.profile-balance-grid > div {
+    display: grid;
+    gap: 9px;
+    padding: 16px;
+    border: 1px solid #e8eee9;
+    border-radius: 11px;
+}
+
+.profile-balance-grid span {
+    color: #7d8982;
+    font-size: 12px;
+}
+
+.profile-balance-grid strong {
+    font: 800 19px "Manrope", sans-serif;
+}
+
+.profile-incoming {
+    color: #16865c;
+}
+
+.profile-outgoing {
+    color: #d77b5a;
+}
+
+.profile-group-list {
+    display: grid;
+    gap: 9px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.profile-group-list li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 13px 14px;
+    border: 1px solid #e8eee9;
+    border-radius: 10px;
+    color: #384b40;
+    font-size: 13px;
+    font-weight: 650;
+}
+
+.profile-group-list button {
+    border: 0;
+    background: transparent;
+    color: #16865c;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.profile-empty,
+.profile-loading {
+    color: #7d8982;
+    font-size: 14px;
+}
+
+.profile-feedback {
+    margin: 0 0 16px;
+    padding: 12px 15px;
+    border-radius: 9px;
+    font-size: 13px;
+}
+
+.profile-feedback.is-error {
+    background: #fff1ef;
+    color: #a63e34;
+}
+
+.profile-feedback.is-success {
+    background: #eaf7ef;
+    color: #18764f;
+}
+
+.profile-message h1 {
+    margin: 0 0 8px;
+    font: 800 24px "Manrope", sans-serif;
+}
+
+.profile-message p {
+    margin: 0;
+    color: #758179;
+}
+
+@media (max-width: 680px) {
+    .profile-topbar {
+        height: 64px;
+        padding: 0 16px;
+    }
+
+    .profile-content {
+        width: min(100% - 24px, 520px);
+        margin-top: 20px;
+    }
+
+    .profile-identity {
+        flex-wrap: wrap;
+        gap: 14px;
+        padding: 20px;
+    }
+
+    .profile-avatar {
+        width: 60px;
+        height: 60px;
+        flex-basis: 60px;
+        border-radius: 18px;
+        font-size: 24px;
+    }
+
+    .profile-identity h1 {
+        font-size: 22px;
+    }
+
+    .profile-friend-action {
+        width: 100%;
+    }
+
+    .profile-friend-action .profile-primary-button,
+    .profile-friend-action .profile-secondary-button {
+        width: 100%;
+    }
+
+    .profile-settings-grid,
+    .profile-friend-details {
+        grid-template-columns: 1fr;
+    }
+
+    .profile-card {
+        padding: 20px;
+    }
+
+    .profile-danger-zone {
+        grid-column: auto;
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .profile-delete-form {
+        width: 100%;
+    }
+
+    .profile-delete-form > div {
+        flex-wrap: wrap;
+    }
+
+    .profile-delete-form > div > button {
+        flex: 1;
+    }
+
+    .profile-balance-grid {
+        grid-template-columns: 1fr;
+    }
+}
