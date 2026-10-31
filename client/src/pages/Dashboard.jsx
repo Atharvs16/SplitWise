@@ -23,7 +23,7 @@ const menuItems = [
         label: "Help & Support",
         description: "We're here to help",
         icon: "help",
-        to: "/help",
+        to: "/Help",
     },
 ];
 
@@ -938,7 +938,11 @@ export default function Dashboard() {
                                             closeMenu();
                                             if (item.label === "My Profile" && data?.user?.username) {
                                                 navigate(`/${encodeURIComponent(data.user.username)}`);
-                                            } else {
+                                            } 
+                                            else if(item.label === "Help & Support"){
+                                                navigate("/Help");
+                                            }
+                                            else {
                                                 setNotice(`${item.label} is not available yet.`);
                                             }
                                         }}
@@ -1920,11 +1924,10 @@ export default function Dashboard() {
 
                                 <div className="search-friend-results">
                                     {searchUserResults.map((user) => (
-                                        <button
+                                        <div
 
                                             key={user.username}
                                             className="search-friend-result"
-                                            onClick={() => navigate(`/${encodeURIComponent(user.username)}`)}
                                         >
                                             <div
                                                 className="search-friend-avatar"
@@ -1939,7 +1942,8 @@ export default function Dashboard() {
                                                     .toUpperCase()}
                                             </div>
 
-                                            <div className="search-friend-info">
+                                            <div className="search-friend-info" 
+                                            onClick={() => navigate(`/${encodeURIComponent(user.username)}`)}>
                                                 <span>{user.username}</span>
                                                 <span>{user.name}</span>
                                             </div>
@@ -1955,7 +1959,7 @@ export default function Dashboard() {
                                             </button>
                                             )
                                             }
-                                        </button>
+                                        </div>
                                     ))}
                                 </div>
                             </div>

@@ -9,6 +9,7 @@ import NotFound from './pages/NotFound'
 import FriendChat from "./pages/FriendChat";
 import GroupChat from "./pages/GroupChat";
 import Profile from "./pages/Profile";
+import Help from "./pages/Help"
 
 const router = createBrowserRouter([
   {
@@ -18,6 +19,10 @@ const router = createBrowserRouter([
   {
     path: "/Auth",
     element: <Auth />,
+  },
+  {
+    path: "/Help",
+    element: <Help />
   },
   {
     element: <ProtectedRoute />, 

@@ -1944,6 +1944,9 @@ button:disabled {
   min-width: 0;
   flex: 1;
 }
+.search-friend-info:hover{
+  cursor: pointer;
+}
 
 .search-friend-info span:first-child {
   color: #2D865D;

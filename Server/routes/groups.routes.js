@@ -42,6 +42,16 @@ router.post(
     groupExpenseValidator.validateCreateInvitation,
     groupsController.createInvitation
 );
+router.post(
+    "/:groupId/members/:memberId",
+    groupExpenseValidator.validateUuidParams("groupId", "memberId"),
+    groupsController.addGroupMember
+);
+router.delete(
+    "/:groupId/members/:memberId",
+    groupExpenseValidator.validateUuidParams("groupId", "memberId"),
+    groupsController.removeGroupMember
+);
 router.get(
     "/:groupId",
     groupExpenseValidator.validateUuidParams("groupId"),

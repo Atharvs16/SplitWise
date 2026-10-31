@@ -74,6 +74,138 @@ async function createGroup(name, description, created_by, memberIds = []) {
     }
 }
 
+async function removeGroupMember(groupId, adminId, memberId) {
+    const client = await db.connect();
+    try {
+        await client.query("BEGIN");
+
+        const groupResult = await client.query(
+            `SELECT created_by
+             FROM groups
+             WHERE id = $1::uuid
+             FOR UPDATE`,
+            [groupId]
+        );
+        if (groupResult.rowCount === 0) {
+            const error = new Error("Group not found.");
+            error.statusCode = 404;
+            throw error;
+        }
+        if (String(groupResult.rows[0].created_by).toLowerCase() !== String(adminId).toLowerCase()) {
+            const error = new Error("Only the group admin can remove members.");
+            error.statusCode = 403;
+            throw error;
+        }
+        if (String(groupResult.rows[0].created_by).toLowerCase() === String(memberId).toLowerCase()) {
+            const error = new Error("The group admin cannot be removed.");
+            error.statusCode = 400;
+            throw error;
+        }
+
+        const result = await client.query(
+            `DELETE FROM group_members
+             WHERE group_id = $1::uuid AND user_id = $2::uuid
+             RETURNING user_id`,
+            [groupId, memberId]
+        );
+        if (result.rowCount === 0) {
+            const error = new Error("Group member not found.");
+            error.statusCode = 404;
+            throw error;
+        }
+
+        await client.query("COMMIT");
+        return { userId: result.rows[0].user_id };
+    } catch (error) {
+        try {
+            await client.query("ROLLBACK");
+        } catch (rollbackError) {
+            console.error("Failed to roll back group member removal:", rollbackError);
+        }
+        throw error;
+    } finally {
+        client.release();
+    }
+}
+
+async function addGroupMember(groupId, userId, friendId) {
+    const client = await db.connect();
+    try {
+        await client.query("BEGIN");
+
+        const groupResult = await client.query(
+            `SELECT id
+             FROM groups
+             WHERE id = $1::uuid
+             FOR UPDATE`,
+            [groupId]
+        );
+        if (groupResult.rowCount === 0) {
+            const error = new Error("Group not found.");
+            error.statusCode = 404;
+            throw error;
+        }
+
+        const memberResult = await client.query(
+            `SELECT 1 FROM group_members
+             WHERE group_id = $1::uuid AND user_id = $2::uuid`,
+            [groupId, userId]
+        );
+        if (memberResult.rowCount === 0) {
+            const error = new Error("Only group members can add friends.");
+            error.statusCode = 403;
+            throw error;
+        }
+        if (String(userId).toLowerCase() === String(friendId).toLowerCase()) {
+            const error = new Error("You cannot add yourself to the group.");
+            error.statusCode = 400;
+            throw error;
+        }
+
+        const friendshipResult = await client.query(
+            `SELECT 1
+             FROM friends
+             WHERE status = 'accepted'
+               AND (
+                   (sender_id = $1::uuid AND receiver_id = $2::uuid)
+                   OR (sender_id = $2::uuid AND receiver_id = $1::uuid)
+               )
+             LIMIT 1`,
+            [userId, friendId]
+        );
+        if (friendshipResult.rowCount === 0) {
+            const error = new Error("You can only add accepted friends to a group.");
+            error.statusCode = 403;
+            throw error;
+        }
+
+        const result = await client.query(
+            `INSERT INTO group_members (group_id, user_id)
+             VALUES ($1::uuid, $2::uuid)
+             ON CONFLICT (group_id, user_id) DO NOTHING
+             RETURNING user_id`,
+            [groupId, friendId]
+        );
+        if (result.rowCount === 0) {
+            const error = new Error("This friend is already a group member.");
+            error.statusCode = 409;
+            throw error;
+        }
+
+        await client.query("COMMIT");
+        return { userId: result.rows[0].user_id };
+    } catch (error) {
+        try {
+            await client.query("ROLLBACK");
+        } catch (rollbackError) {
+            console.error("Failed to roll back adding a group member:", rollbackError);
+        }
+        throw error;
+    } finally {
+        client.release();
+    }
+}
+
 async function getGroupsByUserId(user_id) {
     try {
         const query = `
@@ -138,6 +270,8 @@ async function getSessionById(sessionId, userId) {
 
 module.exports = {
     createGroup,
+    removeGroupMember,
+    addGroupMember,
     getGroupsByUserId,
     getSessionById
 };

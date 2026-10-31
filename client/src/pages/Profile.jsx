@@ -320,11 +320,11 @@ export default function Profile() {
                                     </div>
                                     <div className="profile-balance-grid">
                                         <div>
-                                            <span>Incoming from {profile.name}</span>
+                                            <span>Incoming from {profile.name.split(' ')[0]}</span>
                                             <strong className="profile-incoming">{formatMoney(balances?.incoming)}</strong>
                                         </div>
                                         <div>
-                                            <span>Outgoing to {profile.name}</span>
+                                            <span>Outgoing to {profile.name.split(' ')[0]}</span>
                                             <strong className="profile-outgoing">{formatMoney(balances?.outgoing)}</strong>
                                         </div>
                                     </div>

@@ -41,6 +41,16 @@ async function getGroupOverview(accessToken, groupId) {
     return groupExpenseQueries.getGroupOverview(user.id, groupId);
 }
 
+async function removeGroupMember(accessToken, groupId, memberId) {
+    const user = await getUser(accessToken);
+    return groupQueries.removeGroupMember(groupId, user.id, memberId);
+}
+
+async function addGroupMember(accessToken, groupId, friendId) {
+    const user = await getUser(accessToken);
+    return groupQueries.addGroupMember(groupId, user.id, friendId);
+}
+
 async function createGroupExpense(accessToken, groupId, expense) {
     const user = await getUser(accessToken);
     return groupExpenseQueries.createGroupExpense(user.id, groupId, expense);
@@ -100,6 +110,8 @@ module.exports = {
     createGroup,
     getGroups,
     getGroupOverview,
+    removeGroupMember,
+    addGroupMember,
     createGroupExpense,
     listGroupExpenses,
     createExpenseSettlement,

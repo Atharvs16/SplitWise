@@ -13,9 +13,189 @@
   font-size: 19px;
 }
 
+.gc-page .gc-group-info-trigger {
+  display: block;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.gc-page .gc-group-info-trigger:focus-visible {
+  outline: 2px solid var(--fc-green);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+
 .gc-chat-error .fc-secondary-btn {
   margin-top: 16px;
   text-decoration: none;
+}
+
+.gc-group-info {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: min(100%, 520px);
+  max-height: min(90vh, 760px);
+  overflow: hidden;
+  padding: 25px;
+  border: 1px solid #e8efe9;
+  border-radius: 22px;
+  background: #fff;
+  box-shadow: var(--fc-shadow);
+  animation: fc-modal-in 0.25s ease both;
+}
+
+.gc-group-info .fc-composer-header {
+  flex: 0 0 auto;
+  margin-bottom: 16px;
+}
+
+.gc-group-members,
+.gc-invite-list {
+  display: grid;
+  min-height: 0;
+  overflow: auto;
+  border: 1px solid #e6eee8;
+  border-radius: 12px;
+}
+
+.gc-group-member {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-height: 62px;
+  padding: 9px 12px;
+  border-bottom: 1px solid #f0f3f0;
+}
+
+.gc-group-member:last-child {
+  border-bottom: 0;
+}
+
+.gc-group-member-copy {
+  display: grid;
+  flex: 1;
+  gap: 4px;
+  min-width: 0;
+}
+
+.gc-group-member-copy strong {
+  overflow: hidden;
+  color: #35433a;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gc-group-member-copy small {
+  overflow: hidden;
+  color: #89968d;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gc-admin-badge {
+  padding: 5px 8px;
+  border-radius: 8px;
+  background: #eaf8f1;
+  color: var(--fc-green-dark);
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.gc-remove-member {
+  flex: 0 0 auto;
+  padding: 7px 9px;
+  border: 1px solid #f0d7d8;
+  border-radius: 8px;
+  background: #fff8f8;
+  color: #b34950;
+  font-size: 10px;
+  font-weight: 750;
+}
+
+.gc-remove-member:hover:not(:disabled) {
+  background: #ffeded;
+}
+
+.gc-invite-section {
+  display: grid;
+  gap: 8px;
+  min-height: 0;
+  margin-top: 18px;
+}
+
+.gc-invite-section h3 {
+  margin: 0;
+  color: #35433a;
+  font-size: 13px;
+}
+
+.gc-invite-section > p {
+  margin: 0;
+  color: #89968d;
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.gc-invite-list {
+  max-height: 220px;
+  margin-top: 4px;
+}
+
+.gc-invite-button {
+  min-width: 64px;
+  border-color: #cce9d8;
+  background: #f5fbf7;
+  color: var(--fc-green-dark);
+}
+
+.gc-invite-button:disabled {
+  border-color: #e5ebe6;
+  background: #f7f9f7;
+  color: #8b968f;
+}
+
+.gc-invite-error,
+.gc-invite-notice,
+.gc-invite-empty {
+  padding: 10px 12px;
+  border-radius: 9px;
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.gc-invite-error {
+  background: #fff2f2;
+  color: #ad4148 !important;
+}
+
+.gc-invite-notice {
+  background: #effaf3;
+  color: #19774d !important;
+}
+
+.gc-invite-empty {
+  margin: 0;
+  background: #f8faf8;
+  color: #89968d;
+}
+
+.gc-group-info-footer {
+  display: flex;
+  justify-content: flex-end;
+  flex: 0 0 auto;
+  margin-top: 16px;
+}
+
+.gc-group-info-footer .fc-primary-btn {
+  min-height: 40px;
+  padding: 9px 14px;
 }
 
 .gc-expense-card {
@@ -331,5 +511,13 @@
 
   .gc-settlement-amount {
     width: 92px;
+  }
+
+  .gc-group-info {
+    width: 100%;
+    max-height: 92dvh;
+    padding: 22px 19px calc(19px + env(safe-area-inset-bottom));
+    border-radius: 23px 23px 0 0;
+    border-bottom: 0;
   }
 }

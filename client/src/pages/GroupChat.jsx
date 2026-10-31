@@ -15,6 +15,10 @@ const API = {
         `/api/groups/${encodeURIComponent(groupId)}/expenses/${encodeURIComponent(expenseId)}/settlements`,
     acceptSettlementRequest: (requestId) =>
         `/api/groups/settlement-requests/${encodeURIComponent(requestId)}/accept`,
+    addMember: (groupId, memberId) =>
+        `/api/groups/${encodeURIComponent(groupId)}/members/${encodeURIComponent(memberId)}`,
+    removeMember: (groupId, memberId) =>
+        `/api/groups/${encodeURIComponent(groupId)}/members/${encodeURIComponent(memberId)}`,
 };
 
 const money = (value) =>
@@ -119,6 +123,12 @@ export default function GroupChat() {
     const [mobileChatOpen, setMobileChatOpen] = useState(Boolean(groupId));
     const [composerOpen, setComposerOpen] = useState(false);
     const [settleTarget, setSettleTarget] = useState(null);
+    const [groupInfoOpen, setGroupInfoOpen] = useState(false);
+    const [addFriendsOpen, setAddFriendsOpen] = useState(false);
+    const [friends, setFriends] = useState([]);
+    const [loadingFriends, setLoadingFriends] = useState(false);
+    const [friendsError, setFriendsError] = useState("");
+    const [friendsNotice, setFriendsNotice] = useState("");
     const [submitting, setSubmitting] = useState(false);
     const chatRequestId = useRef(0);
 
@@ -231,6 +241,69 @@ export default function GroupChat() {
 
     async function refreshGroupData() {
         await Promise.all([loadGroup(groupId), loadGroups()]);
+    }
+
+    function openGroupInfo() {
+        setGroupInfoOpen(true);
+        setAddFriendsOpen(false);
+        setFriendsError("");
+        setFriendsNotice("");
+    }
+
+    async function loadFriends() {
+        setAddFriendsOpen(true);
+        setLoadingFriends(true);
+        setFriendsError("");
+        setFriendsNotice("");
+        try {
+            const data = await apiRequest(authenticatedFetch, "/api/friends");
+            if (!Array.isArray(data)) {
+                throw new Error("The friends response was not a list.");
+            }
+            setFriends(data);
+        } catch (error) {
+            setFriendsError(getErrorMessage(error));
+        } finally {
+            setLoadingFriends(false);
+        }
+    }
+
+    async function addFriendToGroup(friend) {
+        setSubmitting(true);
+        setFriendsError("");
+        setFriendsNotice("");
+        try {
+            await apiRequest(authenticatedFetch, API.addMember(groupId, friend.friend_id), {
+                method: "POST",
+            });
+            await refreshGroupData();
+            setFriends((current) =>
+                current.filter((entry) => String(entry.friend_id) !== String(friend.friend_id))
+            );
+            setFriendsNotice(`${friend.friend_name} was added to the group.`);
+        } catch (error) {
+            setFriendsError(getErrorMessage(error));
+        } finally {
+            setSubmitting(false);
+        }
+    }
+
+    async function removeGroupMember(member) {
+        if (!window.confirm(`Remove ${member.name} from ${selectedGroup.name}?`)) return;
+        setSubmitting(true);
+        setChatError("");
+        setNotice("");
+        try {
+            await apiRequest(authenticatedFetch, API.removeMember(groupId, member.id), {
+                method: "DELETE",
+            });
+            await refreshGroupData();
+            setNotice(`${member.name} was removed from the group.`);
+        } catch (error) {
+            setChatError(getErrorMessage(error));
+        } finally {
+            setSubmitting(false);
+        }
     }
 
     async function createExpense(payload) {
@@ -388,7 +461,16 @@ export default function GroupChat() {
                                 </button>
                                 <div className="fc-avatar fc-avatar-large gc-group-avatar">♧</div>
                                 <div className="fc-person-heading">
-                                    <h2>{activeGroup?.name || "Group"}</h2>
+                                    <h2>
+                                        <button
+                                            type="button"
+                                            className="gc-group-info-trigger"
+                                            onClick={openGroupInfo}
+                                            aria-label={`View members and info for ${activeGroup?.name || "group"}`}
+                                        >
+                                            {activeGroup?.name || "Group"}
+                                        </button>
+                                    </h2>
                                     <span>
                                         <span className="fc-status-dot" />
                                         {selectedGroup?.members?.length ?? activeGroup?.member_count ?? 0} members
@@ -500,7 +582,151 @@ export default function GroupChat() {
                     onSubmit={(settlements) => settleMemberShares(settleTarget, settlements)}
                 />
             )}
+
+            {groupInfoOpen && selectedGroup && (
+                <GroupInfoDialog
+                    group={selectedGroup}
+                    currentUserId={currentUserId}
+                    friends={friends}
+                    addingFriends={addFriendsOpen}
+                    loadingFriends={loadingFriends}
+                    friendsError={friendsError}
+                    notice={friendsNotice}
+                    busy={submitting}
+                    onClose={() => setGroupInfoOpen(false)}
+                    onOpenFriends={() => void loadFriends()}
+                    onAddFriend={addFriendToGroup}
+                    onRemove={removeGroupMember}
+                />
+            )}
         </main>
+    );
+}
+
+function GroupInfoDialog({
+    group,
+    currentUserId,
+    friends,
+    addingFriends,
+    loadingFriends,
+    friendsError,
+    notice,
+    busy,
+    onClose,
+    onOpenFriends,
+    onAddFriend,
+    onRemove,
+}) {
+    const isAdmin = String(group.created_by) === String(currentUserId);
+    const memberIds = new Set(group.members.map((member) => String(member.id)));
+    const availableFriends = friends.filter((friend) =>
+        !memberIds.has(String(friend.friend_id))
+    );
+
+    return (
+        <div className="fc-overlay" onMouseDown={(event) => {
+            if (event.target === event.currentTarget) onClose();
+        }}>
+            <section
+                className="gc-group-info"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="gc-group-info-title"
+            >
+                <header className="fc-composer-header">
+                    <div>
+                        <span className="fc-eyebrow">GROUP DETAILS</span>
+                        <h2 id="gc-group-info-title">{group.name}</h2>
+                        <p>{group.members.length} members</p>
+                    </div>
+                    <button type="button" className="fc-modal-close" onClick={onClose} aria-label="Close group info">
+                        ×
+                    </button>
+                </header>
+
+                <div className="gc-group-members">
+                    {group.members.map((member, index) => {
+                        const isGroupAdmin = String(member.id) === String(group.created_by);
+                        return (
+                            <div className="gc-group-member" key={member.id}>
+                                <span className={`fc-avatar fc-avatar-${index % 5} gc-member-avatar`}>
+                                    {initials(member.name)}
+                                </span>
+                                <span className="gc-group-member-copy">
+                                    <strong>{member.name}</strong>
+                                    <small>@{member.username}</small>
+                                </span>
+                                {isGroupAdmin ? (
+                                    <span className="gc-admin-badge">Admin</span>
+                                ) : isAdmin ? (
+                                    <button
+                                        type="button"
+                                        className="gc-remove-member"
+                                        disabled={busy}
+                                        onClick={() => onRemove(member)}
+                                    >
+                                        Remove
+                                    </button>
+                                ) : null}
+                            </div>
+                        );
+                    })}
+                </div>
+
+                {addingFriends && (
+                    <section className="gc-invite-section">
+                        <h3>Add your friends</h3>
+                        <p>Choose an accepted friend to add them to the group immediately.</p>
+                        {friendsError && <p className="gc-invite-error" role="alert">{friendsError}</p>}
+                        {notice && <p className="gc-invite-notice" role="status">{notice}</p>}
+                        {loadingFriends ? (
+                            <p className="gc-invite-empty">Loading friends...</p>
+                        ) : availableFriends.length === 0 ? (
+                            <p className="gc-invite-empty">All your friends are already members of this group.</p>
+                        ) : (
+                            <div className="gc-invite-list">
+                                {availableFriends.map((friend, index) => {
+                                    return (
+                                        <div className="gc-group-member" key={friend.friend_id}>
+                                            <span className={`fc-avatar fc-avatar-${index % 5} gc-member-avatar`}>
+                                                {initials(friend.friend_name)}
+                                            </span>
+                                            <span className="gc-group-member-copy">
+                                                <strong>{friend.friend_name}</strong>
+                                                <small>@{friend.username}</small>
+                                            </span>
+                                            <button
+                                                type="button"
+                                                className="gc-remove-member gc-invite-button"
+                                                disabled={busy}
+                                                onClick={() => onAddFriend(friend)}
+                                            >
+                                                Add
+                                            </button>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </section>
+                )}
+
+                {!addingFriends && friendsError && (
+                    <p className="gc-invite-error" role="alert">{friendsError}</p>
+                )}
+                {!addingFriends && notice && (
+                    <p className="gc-invite-notice" role="status">{notice}</p>
+                )}
+
+                <footer className="gc-group-info-footer">
+                    {!addingFriends ? (
+                        <button type="button" className="fc-primary-btn" onClick={onOpenFriends}>
+                            + Add your friends
+                        </button>
+                    ) : null}
+                </footer>
+            </section>
+        </div>
     );
 }
 

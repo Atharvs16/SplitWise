@@ -46,6 +46,32 @@ async function getGroupOverview(req, res) {
     }
 }
 
+async function removeGroupMember(req, res) {
+    try {
+        const result = await groupservice.removeGroupMember(
+            accessToken(req),
+            req.params.groupId,
+            req.params.memberId
+        );
+        return res.status(200).json(result);
+    } catch (error) {
+        return respondWithError(res, error, "Unable to remove group member.");
+    }
+}
+
+async function addGroupMember(req, res) {
+    try {
+        const result = await groupservice.addGroupMember(
+            accessToken(req),
+            req.params.groupId,
+            req.params.memberId
+        );
+        return res.status(201).json({ member: result });
+    } catch (error) {
+        return respondWithError(res, error, "Unable to add friend to group.");
+    }
+}
+
 async function createGroupExpense(req, res) {
     try {
         const expense = await groupservice.createGroupExpense(
@@ -193,6 +219,8 @@ module.exports = {
     createGroup,
     getGroups,
     getGroupOverview,
+    removeGroupMember,
+    addGroupMember,
     createGroupExpense,
     listGroupExpenses,
     createExpenseSettlement,
