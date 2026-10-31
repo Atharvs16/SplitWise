@@ -8,6 +8,12 @@ const activity = require('./routes/activity.routes');
 const users = require('./routes/users.routes');
 const cors = require("cors");
 
+app.use(cors({
+    origin: "https://splits-ease.vercel.app",
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"]
+}));
 app.use(express.json());
 app.use(cookieParser());
 app.use('/api/auth', auth);
@@ -16,12 +22,6 @@ app.use('/api/friends', friends);
 app.use('/api/activity', activity);
 app.use('/api/users', users);
 
-app.use(cors({
-    origin: ["http://localhost:5173",
-        "https://splits-ease.vercel.app"
-    ],
-    credentials: true
-}));
 
 app.get('/', (req, res) => {
     res.send('Split with SplitWise!');
