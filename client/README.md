@@ -7,7 +7,7 @@ npm install
 npm run dev
 ```
 
-API requests use `VITE_API_URL` from `.env.production`; the Vite development proxy uses that same setting. Because `.env.production` is gitignored, configure this variable in your frontend hosting provider's build environment too.
+API requests use `VITE_API_URL` from `.env.production`; the Vite development proxy uses that same setting. Because `.env.production` is gitignored, configure this variable in your frontend hosting provider's build environment too. Cross-origin login and signup include credentials, so the API must allow the exact client origin with credentials.
 
 Run the client checks with:
 

@@ -182,6 +182,7 @@ function Auth() {
     try {
       const response = await fetch(apiUrl("/api/auth/signup"), {
         method: "POST",
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
         },
@@ -229,6 +230,7 @@ function Auth() {
     try {
       const response = await fetch(apiUrl("/api/auth/login"), {
         method: "POST",
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
         },

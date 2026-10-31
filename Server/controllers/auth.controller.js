@@ -181,8 +181,8 @@ async function logout(req, res) {
         await authService.logout(refreshToken);
         res.clearCookie('refreshtoken', {
             httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "strict",
+            secure: true,
+            sameSite: "none",
             path: "/"
         });
         res.status(200).json({ message: "Logged out successfully" });

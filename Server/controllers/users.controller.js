@@ -60,8 +60,8 @@ async function deleteAccount(req, res) {
         await usersService.deleteAccount(accessToken(req), req.body.currentPassword);
         res.clearCookie("refreshtoken", {
             httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "strict",
+            secure: true,
+            sameSite: "none",
             path: "/"
         });
         return res.status(200).json({ message: "Account deleted. Shared financial history has been preserved." });

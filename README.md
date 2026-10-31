@@ -51,7 +51,7 @@ npm install
 npm run dev
 ```
 
-The client reads its API base URL from `client/.env.production` (`VITE_API_URL`). Production API requests use that URL; the Vite development proxy reads the same setting. Since `.env.production` is gitignored, configure `VITE_API_URL` in the frontend hosting provider's build environment as well.
+The client reads its API base URL from `client/.env.production` (`VITE_API_URL`). Production API requests use that URL; the Vite development proxy reads the same setting. Since `.env.production` is gitignored, configure `VITE_API_URL` in the frontend hosting provider's build environment as well. Cross-origin login and signup must include credentials, and the API's CORS origin must exactly match the deployed client origin.
 
 Useful client checks:
 
