@@ -855,13 +855,23 @@ export default function Dashboard() {
                 <div className="se-sidebar-bottom">
 
                     <div className="se-profile" ref={menuRef}>
-                        <div className="se-avatar avatar-green">{data?.user?.name?.[0] || "?"}</div>
+                        <button
+                            ref={buttonRef}
+                            type="button"
+                            className="se-avatar se-avatar-trigger avatar-green account-menu-trigger"
+                            aria-label="Open account menu"
+                            aria-haspopup="menu"
+                            aria-expanded={isOpen}
+                            onClick={() => setIsOpen((prev) => !prev)}
+                        >
+                            {data?.user?.name?.[0] || "?"}
+                        </button>
                         <div className="se-profile-info">
                             <strong>{data?.user?.name || "Loading account..."}</strong>
                             <span>Personal account</span>
                         </div>
                         <button
-                            ref={buttonRef}
+                            type="button"
                             className={`se-more account-menu-trigger ${isOpen ? "active" : ""}`}
                             aria-label="Open account menu"
                             aria-haspopup="menu"

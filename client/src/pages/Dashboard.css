@@ -171,6 +171,13 @@ button:disabled {
   font-weight: 700;
 }
 
+.se-avatar-trigger {
+  appearance: none;
+  padding: 0;
+  border: 0;
+  line-height: 1;
+}
+
 .avatar-green {
   background: #ddf1e5;
   color: #24774f;
@@ -1101,6 +1108,18 @@ button:disabled {
 
   .se-profile {
     justify-content: center;
+  }
+
+  .account-dropdown {
+    position: fixed;
+    top: auto;
+    right: auto;
+    bottom: 86px;
+    left: 12px;
+    width: min(320px, calc(100vw - 24px));
+    min-width: 0;
+    max-height: calc(100vh - 104px);
+    overflow-y: auto;
   }
 
   .se-main {
