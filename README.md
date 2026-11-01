@@ -1,20 +1,64 @@
 # SplitEase
 
-SplitEase is a React/Vite client and Express/PostgreSQL API for tracking shared expenses, groups, friends, and settlements.
+> **Live application:** [splits-ease.vercel.app](https://splits-ease.vercel.app/)
 
-## Requirements
+SplitEase is a full-stack expense-sharing application for keeping track of shared spending with friends and groups. Create expenses, see who owes whom, and record or request settlements from one dashboard.
 
-- Node.js with npm
-- PostgreSQL
-- PostgreSQL with the schema in `Server/db/Splitwise Schema.sql`
+## What you can do
 
-The SQL file is a fresh-database schema snapshot, not an upgrade migration. Apply it only to a new, empty database. Existing databases need ordered migrations that preserve their data; do not rerun the snapshot against them.
+- Create an account and sign in with a username or phone number.
+- Add friends and manage friend requests.
+- Create groups, invite members, and share group expenses.
+- Add expenses with participant splits and track balances.
+- Request, accept, and record settlements.
+- Review recent activity and update your profile.
+- Use the responsive dashboard on desktop and mobile.
 
-## Configure the API
+## Technology
 
-Create `Server/.env` with:
+| Area | Technologies |
+| --- | --- |
+| Frontend | React, Vite, React Router |
+| Backend | Node.js, Express |
+| Database | PostgreSQL |
+| Validation and authentication | Zod, JWT, bcrypt, HTTP-only refresh-token cookies |
+| Deployment | Vercel (client), Render (API) |
+
+## Architecture
 
 ```text
+client/                 React single-page application
+  src/
+    components/         Shared UI components
+    pages/              Landing, authentication, dashboard, and profile pages
+    api.js              Shared API URL helper
+
+Server/                 Express API
+  controllers/          HTTP request handlers
+  services/             Application and authentication logic
+  queries/               PostgreSQL queries
+  validators/            Request validation
+  db/                    Database schema snapshot
+```
+
+The client uses `VITE_API_URL` as its API base URL. Authentication uses short-lived access tokens and an HTTP-only refresh-token cookie; cross-origin deployments require credentialed requests and an API CORS origin matching the deployed client URL.
+
+## Run locally
+
+### Prerequisites
+
+- Node.js and npm
+- PostgreSQL
+
+### 1. Create a database
+
+Create an empty PostgreSQL database, then apply [`Server/db/Splitwise Schema.sql`](Server/db/Splitwise%20Schema.sql). This file is a **fresh-database schema snapshot**, not an upgrade migration. Do not apply it to an existing database; use data-preserving migrations for upgrades.
+
+### 2. Configure and start the API
+
+Create `Server/.env`:
+
+```dotenv
 DB_USER=your_database_user
 DB_PASSWORD=your_database_password
 DB_NAME=splitease
@@ -24,9 +68,7 @@ JWT_SECRET=replace_with_a_long_random_secret
 PORT=3000
 ```
 
-Keep real credentials in the ignored `.env` file; do not commit them.
-
-Start the API:
+Keep actual credentials and secrets out of source control.
 
 ```powershell
 Set-Location Server
@@ -34,16 +76,11 @@ npm install
 npm start
 ```
 
-Run the API validation tests:
+The API starts on port `3000` unless `PORT` is set.
 
-```powershell
-Set-Location Server
-npm test
-```
+### 3. Configure and start the client
 
-## Run the client
-
-In another terminal:
+Set `VITE_API_URL` to the API URL in `client/.env.local` (for example, `http://localhost:3000`) or configure it in the frontend build environment.
 
 ```powershell
 Set-Location client
@@ -51,15 +88,21 @@ npm install
 npm run dev
 ```
 
-The client reads its API base URL from `client/.env.production` (`VITE_API_URL`). Production API requests use that URL; the Vite development proxy reads the same setting. Since `.env.production` is gitignored, configure `VITE_API_URL` in the frontend hosting provider's build environment as well. Cross-origin login and signup must include credentials, and the API's CORS origin must exactly match the deployed client origin.
+For production builds, configure `VITE_API_URL` in the deployment environment. The local `client/.env.production` file is gitignored and is not included in deployments.
 
-Useful client checks:
+## Quality checks
+
+Run these from their respective directories:
 
 ```powershell
+# client/
 npm run lint
 npm run build
+
+# Server/
+npm test
 ```
 
-## Current authentication support
+## Project scope
 
-Sign-up and password-based sign-in are connected to the API. OTP sign-in and password recovery are not implemented and are not offered in the client.
+The current authentication flow supports username/phone and password sign-in. OTP sign-in and password recovery are not currently implemented.
