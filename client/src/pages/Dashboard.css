@@ -138,6 +138,17 @@ button:disabled {
   font-size: 20px;
 }
 
+.se-nav-svg {
+  display: block;
+  width: 22px;
+  height: 22px;
+  margin: 0 auto;
+}
+
+.se-mobile-account-label {
+  display: none;
+}
+
 .se-nav-count {
   margin-left: auto;
   border-radius: 6px;
@@ -464,7 +475,16 @@ button:disabled {
   color: #16865c;
 }
 
+.se-balance-total h2.negative {
+  color: #d77b5a;
+}
+
 .se-balance-owe h2 {
+  color: #d77b5a;
+}
+
+.se-total-pill.negative {
+  background: #fdf0eb;
   color: #d77b5a;
 }
 
@@ -482,6 +502,10 @@ button:disabled {
   height: 6px;
   background: #52b681;
   border-radius: 50%;
+}
+
+.se-status-dot.negative {
+  background: #e5a187;
 }
 
 .se-balance-owe .se-status-dot {
@@ -1064,66 +1088,115 @@ button:disabled {
 
 @media (max-width: 900px) {
   .se-sidebar {
-    width: 76px;
-    padding-right: 10px;
-    padding-left: 10px;
+    inset: auto 0 0;
+    width: 100%;
+    height: auto;
+    flex-direction: row;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 6px calc(6px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--border);
+    border-right: 0;
   }
 
-  .se-brand {
-    justify-content: center;
-    margin-left: 0;
-  }
-
-  .se-brand>span:last-child,
-  .se-workspace-label,
-  .se-nav-item:not(.active) .se-nav-icon+*,
-  .se-nav-item,
-  .se-profile-info,
-  .se-more {
-    min-width: 0;
-  }
-
-  .se-brand>span:last-child,
-  .se-workspace-label,
-  .se-nav-item:not(.active) .se-nav-count,
-  .se-nav-item:not(.active)::after,
-  .se-profile-info,
-  .se-more {
+  .se-brand,
+  .se-workspace-label {
     display: none;
+  }
+
+  .se-nav {
+    display: flex;
+    flex: 1;
+    justify-content: space-around;
+    gap: 2px;
+    min-width: 0;
   }
 
   .se-nav-item {
+    flex: 1;
+    flex-direction: column;
     justify-content: center;
-    padding: 0;
-    font-size: 0;
+    gap: 3px;
+    min-width: 0;
+    min-height: 56px;
+    padding: 4px 1px;
+    font-size: 9px;
+    line-height: 1.1;
+    text-align: center;
+    white-space: nowrap;
   }
 
   .se-nav-icon {
-    font-size: 20px;
+    width: auto;
+    font-size: 19px;
+    line-height: 1;
   }
 
-  .se-nav-count {
+  .se-nav-count,
+  .se-profile-info,
+  .se-more {
     display: none;
   }
 
+  .se-sidebar-bottom {
+    flex: 0 0 auto;
+    margin: 0;
+  }
+
   .se-profile {
+    flex-direction: column;
     justify-content: center;
+    gap: 3px;
+    width: 48px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+
+  .se-avatar {
+    width: 34px;
+    height: 34px;
+    flex-basis: 34px;
+  }
+
+  .se-mobile-account-label {
+    display: block;
+    color: #77827b;
+    font-size: 9px;
+    line-height: 1.1;
   }
 
   .account-dropdown {
-    position: fixed;
+    position: sticky;
     top: auto;
     right: auto;
-    bottom: 86px;
+    bottom: calc(76px + env(safe-area-inset-bottom));
     left: 12px;
+    display: flex;
+    flex-direction: column;
     width: min(320px, calc(100vw - 24px));
     min-width: 0;
-    max-height: calc(100vh - 104px);
+    height: min(400px, calc(100vh - 92px));
+    height: min(400px, calc(100dvh - 92px));
+    max-height: calc(100vh - 92px);
+    max-height: calc(100dvh - 92px);
+    overflow: hidden;
+  }
+
+  .account-menu-links {
+    flex: 1 1 auto;
+    min-height: 0;
     overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .account-logout-button {
+    flex: 0 0 auto;
   }
 
   .se-main {
-    margin-left: 76px;
+    margin-left: 0;
+    padding-bottom: calc(76px + env(safe-area-inset-bottom));
   }
 
   .se-dashboard-grid {

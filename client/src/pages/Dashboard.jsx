@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useAuth } from '../useAuth';
 import { apiUrl } from "../api";
@@ -29,6 +30,14 @@ const menuItems = [
 ];
 
 function MenuIcon({ name }) {
+    if (name === "settings") {
+        return (
+            <svg className="account-menu-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M9.6,3.32a3.86,3.86,0,1,0,3.86,3.85A3.85,3.85,0,0,0,9.6,3.32M16.35,11a.26.26,0,0,0-.25.21l-.18,1.27a4.63,4.63,0,0,0-.82.45l-1.2-.48a.3.3,0,0,0-.3.13l-1,1.66a.24.24,0,0,0,.06.31l1,.79a3.94,3.94,0,0,0,0,1l-1,.79a.23.23,0,0,0-.06.3l1,1.67c.06.13.19.13.3.13l1.2-.49a3.85,3.85,0,0,0,.82.46l.18,1.27a.24.24,0,0,0,.25.2h1.93a.24.24,0,0,0,.23-.2l.18-1.27a5,5,0,0,0,.81-.46l1.19.49c.12,0,.25,0,.32-.13l1-1.67a.23.23,0,0,0-.06-.3l-1-.79a4,4,0,0,0,0-.49,2.67,2.67,0,0,0,0-.48l1-.79a.25.25,0,0,0,.06-.31l-1-1.66c-.06-.13-.19-.13-.31-.13L19.5,13a4.07,4.07,0,0,0-.82-.45l-.18-1.27a.23.23,0,0,0-.22-.21H16.46M9.71,13C5.45,13,2,14.7,2,16.83v1.92h9.33a6.65,6.65,0,0,1,0-5.69A13.56,13.56,0,0,0,9.71,13m7.6,1.43a1.45,1.45,0,1,1,0,2.89,1.45,1.45,0,0,1,0-2.89Z" />
+            </svg>
+        );
+    }
+
     const paths = {
         user: (
             <>
@@ -76,6 +85,29 @@ function MenuIcon({ name }) {
             {paths[name]}
         </svg>
     );
+}
+
+function NavigationIcon({ name }) {
+    if (name === "groups") {
+        return (
+            <svg className="se-nav-svg" viewBox="-3 0 32 32" fill="currentColor" aria-hidden="true">
+                <path d="M20.906 20.75c1.313 0.719 2.063 2 1.969 3.281-0.063 0.781-0.094 0.813-1.094 0.938-0.625 0.094-4.563 0.125-8.625 0.125-4.594 0-9.406-0.094-9.75-0.188-1.375-0.344-0.625-2.844 1.188-4.031 1.406-0.906 4.281-2.281 5.063-2.438 1.063-0.219 1.188-0.875 0-3-0.281-0.469-0.594-1.906-0.625-3.406-0.031-2.438 0.438-4.094 2.563-4.906 0.438-0.156 0.875-0.219 1.281-0.219 1.406 0 2.719 0.781 3.25 1.938 0.781 1.531 0.469 5.625-0.344 7.094-0.938 1.656-0.844 2.188 0.188 2.469 0.688 0.188 2.813 1.188 4.938 2.344zM3.906 19.813c-0.5 0.344-0.969 0.781-1.344 1.219-1.188 0-2.094-0.031-2.188-0.063-0.781-0.188-0.344-1.625 0.688-2.25 0.781-0.5 2.375-1.281 2.813-1.375 0.563-0.125 0.688-0.469 0-1.656-0.156-0.25-0.344-1.063-0.344-1.906-0.031-1.375 0.25-2.313 1.438-2.719 1-0.375 2.125 0.094 2.531 0.938 0.406 0.875 0.188 3.125-0.25 3.938-0.5 0.969-0.406 1.219 0.156 1.375 0.125 0.031 0.375 0.156 0.719 0.313-1.375 0.563-3.25 1.594-4.219 2.188zM24.469 18.625c0.75 0.406 1.156 1.094 1.094 1.813-0.031 0.438-0.031 0.469-0.594 0.531-0.156 0.031-0.875 0.063-1.813 0.063-0.406-0.531-0.969-1.031-1.656-1.375-1.281-0.75-2.844-1.563-4-2.063 0.313-0.125 0.594-0.219 0.719-0.25 0.594-0.125 0.688-0.469 0-1.656-0.125-0.25-0.344-1.063-0.344-1.906-0.031-1.375 0.219-2.313 1.406-2.719 1.031-0.375 2.156 0.094 2.531 0.938 0.406 0.875 0.25 3.125-0.188 3.938-0.5 0.969-0.438 1.219 0.094 1.375 0.375 0.125 1.563 0.688 2.75 1.313z" />
+            </svg>
+        );
+    }
+
+    if (name === "friends") {
+        return (
+            <svg className="se-nav-svg" viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="3" aria-hidden="true">
+                <circle cx="22.83" cy="22.57" r="7.51" />
+                <path d="M38,49.94a15.2,15.2,0,0,0-15.21-15.2h0a15.2,15.2,0,0,0-15.2,15.2Z" />
+                <circle cx="44.13" cy="27.22" r="6.05" />
+                <path d="M42.4,49.94h14A12.24,12.24,0,0,0,44.13,37.7h0a12.21,12.21,0,0,0-5.75,1.43" />
+            </svg>
+        );
+    }
+
+    return name;
 }
 
 const formatMoney = (amount) =>
@@ -189,14 +221,31 @@ export default function Dashboard() {
         setSearchParams({ tab: tabName });
     }
     const [isOpen, setIsOpen] = useState(false);
+    const [isCompactLayout, setIsCompactLayout] = useState(
+        () => window.matchMedia("(max-width: 900px)").matches
+    );
+    const [menuPortalTarget, setMenuPortalTarget] = useState(null);
     const menuRef = useRef(null);
+    const dropdownRef = useRef(null);
     const buttonRef = useRef(null);
+    const setMenuContainer = useCallback((node) => {
+        menuRef.current = node;
+        setMenuPortalTarget(node);
+    }, []);
+
+    useEffect(() => {
+        const mediaQuery = window.matchMedia("(max-width: 900px)");
+        const updateLayout = (event) => setIsCompactLayout(event.matches);
+
+        mediaQuery.addEventListener("change", updateLayout);
+        return () => mediaQuery.removeEventListener("change", updateLayout);
+    }, []);
 
     useEffect(() => {
         function handleOutsideClick(event) {
             if (
-                menuRef.current &&
-                !menuRef.current.contains(event.target)
+                !menuRef.current?.contains(event.target) &&
+                !dropdownRef.current?.contains(event.target)
             ) {
                 setIsOpen(false);
             }
@@ -796,8 +845,8 @@ export default function Dashboard() {
 
     const navItems = [
         { label: "Dashboard", icon: "⌂" },
-        { label: "Groups", icon: "▦" },
-        { label: "Friends", icon: "♧" },
+        { label: "Groups", icon: "groups" },
+        { label: "Friends", icon: "friends" },
         { label: "Settlements", icon: "⇄" },
         { label: "Activity", icon: "↗" },
     ];
@@ -846,15 +895,15 @@ export default function Dashboard() {
                                 setNotice("");
                             }}
                         >
-                            <span className="se-nav-icon">{item.icon}</span>
-                            {item.label}
+                            <span className="se-nav-icon"><NavigationIcon name={item.icon} /></span>
+                            <span className="se-nav-label">{item.label}</span>
                         </button>
                     ))}
                 </nav>
 
                 <div className="se-sidebar-bottom">
 
-                    <div className="se-profile" ref={menuRef}>
+                    <div className="se-profile" ref={setMenuContainer}>
                         <button
                             ref={buttonRef}
                             type="button"
@@ -866,6 +915,7 @@ export default function Dashboard() {
                         >
                             {data?.user?.name?.[0] || "?"}
                         </button>
+                        <span className="se-mobile-account-label">Account</span>
                         <div className="se-profile-info">
                             <strong>{data?.user?.name || "Loading account..."}</strong>
                             <span>Personal account</span>
@@ -880,7 +930,7 @@ export default function Dashboard() {
                         >
                             ···
                         </button>
-                        {isOpen && <div className="account-dropdown" role="menu">
+                        {isOpen && menuPortalTarget && createPortal(<div ref={dropdownRef} className="account-dropdown" role="menu">
                             <div className="dropdown-heading">
                                 <span className="dropdown-heading-title">Your account</span>
                                 <span className="dropdown-heading-subtitle">
@@ -970,7 +1020,7 @@ export default function Dashboard() {
                                     </div>
                                 </div>
                             </div>}
-                        </div>}
+                        </div>, isCompactLayout ? document.body : menuPortalTarget)}
                     </div>
                 </div>
             </aside>
@@ -1094,12 +1144,12 @@ export default function Dashboard() {
                                     <div className="se-card-top">
                                         <span className="se-card-icon">◎</span>
                                         <span className="se-card-caption">NET BALANCE</span>
-                                        <span className="se-total-pill">
+                                        <span className={`se-total-pill ${netTotal < 0 ? "negative" : ""}`}>
                                             {netTotal > 0 ? "Positive" : netTotal < 0 ? "Negative" : "Even"}
                                         </span>
                                     </div>
                                     <p className="se-card-label">Total</p>
-                                    <h2>
+                                    <h2 className={netTotal < 0 ? "negative" : ""}>
                                         {balancesLoading
                                             ? "..."
                                             : balancesError
@@ -1107,13 +1157,13 @@ export default function Dashboard() {
                                                 : `${netTotal > 0 ? "+" : netTotal < 0 ? "−" : ""}${formatMoney(netTotal)}`}
                                     </h2>
                                     <div className="se-card-foot">
-                                        <span className="se-status-dot" />
+                                        <span className={`se-status-dot ${netTotal < 0 ? "negative" : ""}`} />
                                         {balancesError
                                             ? "Could not load balances"
                                             : netTotal > 0
                                                 ? "You're owed more than you owe"
                                                 : netTotal < 0
-                                                    ? "You owe more than you're owed"
+                                                    ? <span className="negative">You owe more than you're owed</span>
                                                     : "You're all settled up"}
                                     </div>
                                 </article>
